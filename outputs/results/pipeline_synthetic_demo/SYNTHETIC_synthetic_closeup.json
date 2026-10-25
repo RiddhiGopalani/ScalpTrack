@@ -9,7 +9,7 @@
     200
   ],
   "input_hash": "125e6b74e02b9136a2204adabb35ac564532a44db174c895d52954914dd6bbd7",
-  "run_config_id": "b42a3ae911f0",
+  "run_config_id": "aa82b17270f3",
   "quality": {
     "width_px": 200,
     "height_px": 200,
@@ -145,14 +145,14 @@
     "figure_panel": "SYNTHETIC_synthetic_closeup_panel.png"
   },
   "timings_s": {
-    "load_validate": 0.0002840000088326633,
-    "quality": 0.0007699999841861427,
-    "faces": 0.14979399996809661,
-    "segmentation_edges": 0.005840099998749793,
-    "features": 0.04984839999815449,
-    "classification": 1.0800024028867483e-05,
-    "measurements": 0.009706800046842545,
-    "total": 0.25854939996497706
+    "load_validate": 0.00022089999993113452,
+    "quality": 0.0008794999998826825,
+    "faces": 0.19032160000006115,
+    "segmentation_edges": 0.010374499999670661,
+    "features": 0.07695849999981874,
+    "classification": 1.1800000265793642e-05,
+    "measurements": 0.019977299999936804,
+    "total": 0.3527068999997027
   },
   "provenance": "synthetic",
   "run": {

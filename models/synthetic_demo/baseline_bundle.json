@@ -131,6 +131,7 @@
         10.0
       ],
       "rf_n_estimators": 300,
+      "rf_n_jobs": 1,
       "class_weight": "balanced",
       "uncertainty_threshold": null,
       "max_images_per_class": null
@@ -147,5 +148,5 @@
     "platform": "Windows-11-10.0.26200-SP0",
     "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD"
   },
-  "created_unix": 1792883733.9720461
+  "created_unix": 1792942434.464108
 }

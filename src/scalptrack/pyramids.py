@@ -27,6 +27,7 @@ def gaussian_pyramid(image: np.ndarray, max_levels: int = 4, min_side_px: int = 
 
 
 def expand(level: np.ndarray, size_hw: tuple[int, int]) -> np.ndarray:
+    """Upsample one pyramid level to an explicit (height, width) - needed for odd sizes."""
     return cv2.pyrUp(level, dstsize=(size_hw[1], size_hw[0]))
 
 
@@ -48,6 +49,7 @@ def reconstruct(lap: list[np.ndarray]) -> np.ndarray:
 
 
 def reconstruction_error(original: np.ndarray, reconstructed: np.ndarray) -> dict[str, float]:
+    """Max absolute error and MSE between the original and the reconstruction."""
     d = original.astype(np.float64) - reconstructed
     return {"max_abs_error": float(np.max(np.abs(d))), "mse": float(np.mean(d * d))}
 
@@ -58,6 +60,7 @@ def band_energies(lap: list[np.ndarray]) -> list[float]:
 
 
 def pyramid_table(gauss: list[np.ndarray], lap: list[np.ndarray]) -> list[dict]:
+    """One row per level: size, Gaussian std and Laplacian residual energy."""
     rows = []
     for k, g in enumerate(gauss):
         row = {"level": k, "height": g.shape[0], "width": g.shape[1], "gauss_std": float(g.std())}

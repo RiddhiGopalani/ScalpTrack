@@ -15,8 +15,8 @@ from __future__ import annotations
 import json
 import platform
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import joblib
 import numpy as np
@@ -26,8 +26,13 @@ from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (accuracy_score, balanced_accuracy_score, classification_report, confusion_matrix,
-                             f1_score)
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+)
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -46,8 +51,9 @@ class ModelMissingError(FileNotFoundError):
 # --------------------------------------------------------------------------- features
 
 
-def feature_table_from_manifest(manifest: pd.DataFrame, source_dir: Path, cfg: dict,
-                                cache_path: Path | None = None, progress: bool = True) -> pd.DataFrame:
+def feature_table_from_manifest(
+    manifest: pd.DataFrame, source_dir: Path, cfg: dict, cache_path: Path | None = None, progress: bool = True
+) -> pd.DataFrame:
     """Extract the fixed-schema features for every usable manifest row (cached as CSV).
 
     Region rows are cropped to ``bbox_xyxy`` from their parent image first.
@@ -55,8 +61,9 @@ def feature_table_from_manifest(manifest: pd.DataFrame, source_dir: Path, cfg: d
     rows = manifest[manifest["split"].isin(["train", "validation", "test"])].copy()
     cap = cfg["classification"].get("max_images_per_class")
     if cap:
-        rows = (rows.groupby(["split", "canonical_label"], group_keys=False)
-                    .apply(lambda g: g.sample(min(len(g), int(cap)), random_state=cfg["seed"])))
+        rows = rows.groupby(["split", "canonical_label"], group_keys=False).apply(
+            lambda g: g.sample(min(len(g), int(cap)), random_state=cfg["seed"])
+        )
     names = feature_names()
     cached = None
     if cache_path is not None and cache_path.is_file():
@@ -87,8 +94,11 @@ def feature_table_from_manifest(manifest: pd.DataFrame, source_dir: Path, cfg: d
 
 def feature_table_from_arrays(samples: list[dict], cfg: dict) -> pd.DataFrame:
     """Feature table for in-memory samples with keys image, label, group_id, image_id (synthetic fixtures)."""
-    rows = [extract_features(s["image"], cfg) | {"image_id": s["image_id"], "canonical_label": s["label"],
-                                                 "duplicate_group_id": s["group_id"]} for s in samples]
+    rows = [
+        extract_features(s["image"], cfg)
+        | {"image_id": s["image_id"], "canonical_label": s["label"], "duplicate_group_id": s["group_id"]}
+        for s in samples
+    ]
     return pd.DataFrame(rows).set_index("image_id")
 
 
@@ -101,19 +111,32 @@ def make_candidates(cfg: dict) -> dict[str, Pipeline]:
     seed = cfg["seed"]
     cw = c.get("class_weight")
     models: dict[str, Pipeline] = {
-        "majority_baseline": Pipeline([("impute", SimpleImputer(strategy="median")),
-                                       ("clf", DummyClassifier(strategy="most_frequent"))]),
+        "majority_baseline": Pipeline(
+            [("impute", SimpleImputer(strategy="median")), ("clf", DummyClassifier(strategy="most_frequent"))]
+        ),
     }
     for C in c["logreg_C_grid"]:
-        models[f"logreg_C{C:g}"] = Pipeline([
+        models[f"logreg_C{C:g}"] = Pipeline(
+            [
+                ("impute", SimpleImputer(strategy="median")),
+                ("scale", StandardScaler()),
+                ("clf", LogisticRegression(C=C, class_weight=cw, max_iter=5000, random_state=seed)),
+            ]
+        )
+    models["random_forest"] = Pipeline(
+        [
             ("impute", SimpleImputer(strategy="median")),
-            ("scale", StandardScaler()),
-            ("clf", LogisticRegression(C=C, class_weight=cw, max_iter=5000, random_state=seed)),
-        ])
-    models["random_forest"] = Pipeline([
-        ("impute", SimpleImputer(strategy="median")),
-        ("clf", RandomForestClassifier(n_estimators=c["rf_n_estimators"], class_weight=cw, random_state=seed, n_jobs=int(c.get("rf_n_jobs", 1)))),
-    ])
+            (
+                "clf",
+                RandomForestClassifier(
+                    n_estimators=c["rf_n_estimators"],
+                    class_weight=cw,
+                    random_state=seed,
+                    n_jobs=int(c.get("rf_n_jobs", 1)),
+                ),
+            ),
+        ]
+    )
     return models
 
 
@@ -132,6 +155,7 @@ def metrics(y_true, y_pred, classes: list[str]) -> dict:
 
 
 def split_xy(table: pd.DataFrame, split: str, names: list[str]) -> tuple[np.ndarray, np.ndarray]:
+    """Feature matrix and label vector for one split, in ``names`` order."""
     part = table[table["split"] == split]
     return part[names].to_numpy(dtype=np.float64), part["canonical_label"].to_numpy()
 
@@ -151,14 +175,28 @@ def select_on_validation(table: pd.DataFrame, cfg: dict, groups=ALL_GROUPS) -> d
         model.fit(Xtr, ytr)
         fit_s = time.perf_counter() - t0
         m = metrics(yva, model.predict(Xva), classes)
-        rows.append({"model": name, "val_macro_f1": m["macro_f1"], "val_accuracy": m["accuracy"],
-                     "val_balanced_accuracy": m["balanced_accuracy"], "fit_seconds": fit_s})
+        rows.append(
+            {
+                "model": name,
+                "val_macro_f1": m["macro_f1"],
+                "val_accuracy": m["accuracy"],
+                "val_balanced_accuracy": m["balanced_accuracy"],
+                "fit_seconds": fit_s,
+            }
+        )
         fitted[name] = model
     table_val = pd.DataFrame(rows).sort_values("val_macro_f1", ascending=False, kind="stable")
     best = table_val[table_val["model"] != "majority_baseline"].iloc[0]["model"]
-    return {"selection_table": table_val, "best_name": best, "best_model": fitted[best],
-            "baseline_model": fitted["majority_baseline"], "classes": classes, "feature_names": names,
-            "feature_groups": list(groups), "classes_missing_from_train": missing_val}
+    return {
+        "selection_table": table_val,
+        "best_name": best,
+        "best_model": fitted[best],
+        "baseline_model": fitted["majority_baseline"],
+        "classes": classes,
+        "feature_names": names,
+        "feature_groups": list(groups),
+        "classes_missing_from_train": missing_val,
+    }
 
 
 def final_test_evaluation(selection: dict, table: pd.DataFrame) -> dict:
@@ -174,9 +212,14 @@ def final_test_evaluation(selection: dict, table: pd.DataFrame) -> dict:
         "status": str(Status.OK),
         "selected": metrics(yte, pred, classes),
         "majority_baseline": metrics(yte, selection["baseline_model"].predict(Xte), classes),
-        "predictions": pd.DataFrame({"image_id": table.index[table["split"] == "test"], "true": yte, "pred": pred}),
-        "timing": {"n_samples": int(len(Xte)), "classifier_predict_seconds": infer_s,
-                   "note": "classifier step only (features precomputed); see per-image timing in notebook 05"},
+        "predictions": pd.DataFrame(
+            {"image_id": table.index[table["split"] == "test"], "true": yte, "pred": pred}
+        ),
+        "timing": {
+            "n_samples": int(len(Xte)),
+            "classifier_predict_seconds": infer_s,
+            "note": "classifier step only (features precomputed); see per-image timing in notebook 05",
+        },
     }
 
 
@@ -191,15 +234,25 @@ def texture_ablation(table: pd.DataFrame, cfg: dict) -> pd.DataFrame:
         sel = select_on_validation(table, cfg, groups)
         ev = final_test_evaluation(sel, table)
         val_best = sel["selection_table"].set_index("model").loc[sel["best_name"]]
-        rows.append({"variant": label, "n_features": len(sel["feature_names"]), "selected_model": sel["best_name"],
-                     "val_macro_f1": float(val_best["val_macro_f1"]),
-                     "test_macro_f1": ev["selected"]["macro_f1"] if ev["status"] == "ok" else None,
-                     "test_accuracy": ev["selected"]["accuracy"] if ev["status"] == "ok" else None,
-                     "test_balanced_accuracy": ev["selected"]["balanced_accuracy"] if ev["status"] == "ok" else None})
+        rows.append(
+            {
+                "variant": label,
+                "n_features": len(sel["feature_names"]),
+                "selected_model": sel["best_name"],
+                "val_macro_f1": float(val_best["val_macro_f1"]),
+                "test_macro_f1": ev["selected"]["macro_f1"] if ev["status"] == "ok" else None,
+                "test_accuracy": ev["selected"]["accuracy"] if ev["status"] == "ok" else None,
+                "test_balanced_accuracy": ev["selected"]["balanced_accuracy"]
+                if ev["status"] == "ok"
+                else None,
+            }
+        )
     return pd.DataFrame(rows)
 
 
-def exploratory_group_cv(table: pd.DataFrame, cfg: dict, n_splits: int = 5, model_name: str = "logreg_C1") -> dict:
+def exploratory_group_cv(
+    table: pd.DataFrame, cfg: dict, n_splits: int = 5, model_name: str = "logreg_C1"
+) -> dict:
     """Grouped stratified CV - the fallback when independent test support is inadequate."""
     names = feature_names()
     X = table[names].to_numpy(dtype=np.float64)
@@ -215,23 +268,44 @@ def exploratory_group_cv(table: pd.DataFrame, cfg: dict, n_splits: int = 5, mode
         model = make_candidates(cfg)[model_name]
         model.fit(X[tr], y[tr])
         scores.append(f1_score(y[te], model.predict(X[te]), average="macro", zero_division=0))
-    return {"status": str(Status.EXPLORATORY), "n_splits": k, "macro_f1_per_fold": [float(s) for s in scores],
-            "macro_f1_mean": float(np.mean(scores)), "macro_f1_std": float(np.std(scores))}
+    return {
+        "status": str(Status.EXPLORATORY),
+        "n_splits": k,
+        "macro_f1_per_fold": [float(s) for s in scores],
+        "macro_f1_mean": float(np.mean(scores)),
+        "macro_f1_std": float(np.std(scores)),
+    }
 
 
 # --------------------------------------------------------------------------- bundles
 
 
 def package_versions() -> dict:
+    """Versions of the main libraries and the platform, stored with every model and result."""
     import cv2
     import skimage
-    return {"python": platform.python_version(), "numpy": np.__version__, "opencv": cv2.__version__,
-            "scikit-learn": sklearn.__version__, "scikit-image": skimage.__version__, "pandas": pd.__version__,
-            "platform": platform.platform(), "processor": platform.processor()}
+
+    return {
+        "python": platform.python_version(),
+        "numpy": np.__version__,
+        "opencv": cv2.__version__,
+        "scikit-learn": sklearn.__version__,
+        "scikit-image": skimage.__version__,
+        "pandas": pd.__version__,
+        "platform": platform.platform(),
+        "processor": platform.processor(),
+    }
 
 
-def make_bundle(selection: dict, cfg: dict, task_mode: str, data_provenance: str, trained_on: str,
-                uncertainty_threshold: float | None = None, extra: dict | None = None) -> dict:
+def make_bundle(
+    selection: dict,
+    cfg: dict,
+    task_mode: str,
+    data_provenance: str,
+    trained_on: str,
+    uncertainty_threshold: float | None = None,
+    extra: dict | None = None,
+) -> dict:
     """Everything needed to reproduce inference: model, class order, feature schema, config, versions."""
     model_id = f"{trained_on}__{selection['best_name']}__seed{cfg['seed']}"
     return {
@@ -244,11 +318,14 @@ def make_bundle(selection: dict, cfg: dict, task_mode: str, data_provenance: str
         "feature_names": selection["feature_names"],
         "feature_groups": selection["feature_groups"],
         "task_mode": task_mode,
-        "data_provenance": data_provenance,     # "real" or "synthetic"
+        "data_provenance": data_provenance,  # "real" or "synthetic"
         "trained_on": trained_on,
         "seed": cfg["seed"],
-        "input_geometry": {"feature_size": cfg["texture"]["feature_size"], "interpolation": "INTER_AREA",
-                           "color_order": "RGB"},
+        "input_geometry": {
+            "feature_size": cfg["texture"]["feature_size"],
+            "interpolation": "INTER_AREA",
+            "color_order": "RGB",
+        },
         "config_snapshot": {k: cfg[k] for k in ("texture", "edges", "pyramids", "classification")},
         "uncertainty_threshold": uncertainty_threshold,
         "versions": package_versions(),
@@ -258,6 +335,7 @@ def make_bundle(selection: dict, cfg: dict, task_mode: str, data_provenance: str
 
 
 def save_bundle(bundle: dict, path: Path) -> Path:
+    """Save the bundle with joblib plus a human-readable ``.json`` copy of its metadata."""
     path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(bundle, path)
     meta = {k: v for k, v in bundle.items() if k != "model"}
@@ -266,9 +344,12 @@ def save_bundle(bundle: dict, path: Path) -> Path:
 
 
 def load_bundle(path: Path | str | None) -> dict:
+    """Load a saved bundle; raises ``ModelMissingError`` with training instructions if absent."""
     if path is None or not Path(path).is_file():
-        raise ModelMissingError(f"No trained model bundle at {path}. Train one with notebook 05 or "
-                                "`python scripts/train_classifier.py` after downloading the dataset.")
+        raise ModelMissingError(
+            f"No trained model bundle at {path}. Train one with notebook 05 or "
+            "`python scripts/train_classifier.py` after downloading the dataset."
+        )
     bundle = joblib.load(path)
     for key in ("model", "classes", "feature_names"):
         if key not in bundle:
@@ -279,8 +360,14 @@ def load_bundle(path: Path | str | None) -> dict:
 def predict_condition(rgb_roi: np.ndarray, bundle: dict | None, cfg: dict) -> dict:
     """Ordered class scores and the model decision for one RGB ROI."""
     if bundle is None:
-        return {"status": str(Status.UNAVAILABLE), "predicted_label": None, "class_scores": {}, "model_id": None,
-                "task_mode": None, "reason": "No trained model bundle available"}
+        return {
+            "status": str(Status.UNAVAILABLE),
+            "predicted_label": None,
+            "class_scores": {},
+            "model_id": None,
+            "task_mode": None,
+            "reason": "No trained model bundle available",
+        }
     t0 = time.perf_counter()
     feats = extract_features(rgb_roi, cfg)
     x = np.array([[feats[n] for n in bundle["feature_names"]]], dtype=np.float64)
@@ -301,12 +388,16 @@ def predict_condition(rgb_roi: np.ndarray, bundle: dict | None, cfg: dict) -> di
         "model_id": bundle["model_id"],
         "task_mode": bundle["task_mode"],
         "inference_seconds": time.perf_counter() - t0,
-        "reason": ("Model trained on SYNTHETIC fixtures: labels are not scalp conditions" if synthetic else
-                   "Dataset-label scores from an experimental classifier; not a diagnosis or calibrated probability"),
+        "reason": (
+            "Model trained on SYNTHETIC fixtures: labels are not scalp conditions"
+            if synthetic
+            else "Dataset-label scores from an experimental classifier; not a diagnosis or calibrated probability"
+        ),
     }
 
 
 def misclassified(predictions: pd.DataFrame) -> pd.DataFrame:
+    """Rows of a predictions table where the prediction differs from the true label."""
     return predictions[predictions["true"] != predictions["pred"]].copy()
 
 
@@ -318,6 +409,7 @@ def choose_uncertainty_threshold(selection: dict, table: pd.DataFrame, target_co
 
 
 def time_per_image(fn: Callable[[], object], repeats: int = 5) -> float:
+    """Median wall-clock seconds of ``fn()`` over ``repeats`` calls."""
     ts = []
     for _ in range(repeats):
         t0 = time.perf_counter()

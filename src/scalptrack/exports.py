@@ -60,8 +60,13 @@ def config_id(cfg: dict) -> str:
     return hashlib.sha256(json.dumps(clean, sort_keys=True, default=str).encode()).hexdigest()[:12]
 
 
-def export_result(result: dict, output_dir: str | Path, stem: str | None = None,
-                  figures: dict[str, Any] | None = None, dpi: int = 130) -> dict[str, str]:
+def export_result(
+    result: dict,
+    output_dir: str | Path,
+    stem: str | None = None,
+    figures: dict[str, Any] | None = None,
+    dpi: int = 130,
+) -> dict[str, str]:
     """Write ``<stem>.json``, ``<stem>.csv`` (flattened) and one PNG per Matplotlib figure."""
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -88,6 +93,7 @@ def export_result(result: dict, output_dir: str | Path, stem: str | None = None,
 
 
 def write_json(obj: Any, path: str | Path) -> Path:
+    """Write ``obj`` as indented JSON (NumPy values converted), creating parent folders."""
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(to_jsonable(obj, max_array=10_000), indent=2), encoding="utf-8")

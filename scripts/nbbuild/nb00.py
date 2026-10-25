@@ -42,8 +42,16 @@ def build():
         rows = []
         for name, s in cfg["datasets"]["sources"].items():
             st = dataset_status(cfg, name)
-            rows.append({"source": name, "task_type": s["task_type"], "license": s["license"], "local_files": st["n_files"],
-                         "audited": st["audited"], "url": s["url"]})
+            rows.append(
+                {
+                    "source": name,
+                    "task_type": s["task_type"],
+                    "license": s["license"],
+                    "local_files": st["n_files"],
+                    "audited": st["audited"],
+                    "url": s["url"],
+                }
+            )
         registry = pd.DataFrame(rows)
         registry
     """))
@@ -62,9 +70,13 @@ def build():
             inv = pd.read_csv(inv_path)
             parts = inv["remote_path"].str.split("/", expand=True)
             inv["publisher_split"], inv["raw_label"] = parts[1], parts[2]
-            listing = inv.pivot_table(index="raw_label", columns="publisher_split", values="remote_path", aggfunc="count")
+            listing = inv.pivot_table(
+                index="raw_label", columns="publisher_split", values="remote_path", aggfunc="count"
+            )
             listing["total"] = listing.sum(axis=1)
-            print(f"{len(inv)} files listed, extensions: {inv['remote_path'].str.rsplit('.', n=1).str[-1].value_counts().to_dict()}")
+            print(
+                f"{len(inv)} files listed, extensions: {inv['remote_path'].str.rsplit('.', n=1).str[-1].value_counts().to_dict()}"
+            )
             print(f"total listed size: {inv['total_bytes'].sum() / 1e6:.1f} MB")
             display(listing)
             fig, ax = plt.subplots(figsize=(8, 4))
@@ -101,8 +113,24 @@ def build():
             MANIFEST, REPORT = audit.build_manifest(cfg, STATUS["source"])
             paths = audit.save_manifest(MANIFEST, REPORT, project_path(cfg, "manifests"))
             print(json.dumps({k: str(rel(v)) for k, v in paths.items()}, indent=2))
-            print(json.dumps({k: REPORT[k] for k in ("n_image_files", "n_other_files", "n_unreadable", "n_missing_label",
-                                                     "n_label_conflict", "duplicates", "split")}, indent=2, default=str))
+            print(
+                json.dumps(
+                    {
+                        k: REPORT[k]
+                        for k in (
+                            "n_image_files",
+                            "n_other_files",
+                            "n_unreadable",
+                            "n_missing_label",
+                            "n_label_conflict",
+                            "duplicates",
+                            "split",
+                        )
+                    },
+                    indent=2,
+                    default=str,
+                )
+            )
         else:
             print("Skipped: dataset not downloaded. Follow docs/dataset_setup.md, then re-run this notebook.")
     """))
@@ -111,17 +139,28 @@ def build():
             usable = MANIFEST[MANIFEST["split"].isin(audit.SPLITS)]
             display(audit.split_count_table(MANIFEST))
             fig, axes = plt.subplots(1, 3, figsize=(16, 4.5))
-            usable.groupby(["canonical_label", "split"]).size().unstack(fill_value=0).plot.barh(stacked=True, ax=axes[0])
+            usable.groupby(["canonical_label", "split"]).size().unstack(fill_value=0).plot.barh(
+                stacked=True, ax=axes[0]
+            )
             axes[0].set_title("Images per class and split (after audit)")
-            axes[1].hist(usable["width_px"], bins=40, alpha=.7, label="width")
-            axes[1].hist(usable["height_px"], bins=40, alpha=.7, label="height")
-            axes[1].legend(); axes[1].set_title("Native image dimensions (px)")
+            axes[1].hist(usable["width_px"], bins=40, alpha=0.7, label="width")
+            axes[1].hist(usable["height_px"], bins=40, alpha=0.7, label="height")
+            axes[1].legend()
+            axes[1].set_title("Native image dimensions (px)")
             usable.boxplot(column="gray_mean", by="canonical_label", ax=axes[2], rot=70)
-            axes[2].set_title("Mean grayscale intensity by label"); fig.suptitle("")
-            plt.tight_layout(); save_fig(fig, "audit_overview", "real"); plt.show()
+            axes[2].set_title("Mean grayscale intensity by label")
+            fig.suptitle("")
+            plt.tight_layout()
+            save_fig(fig, "audit_overview", "real")
+            plt.show()
             excl = MANIFEST["exclusion_reason"].value_counts(dropna=True)
             print("exclusions:", excl.to_dict() or "none")
-            print("formats:", MANIFEST["format"].value_counts().to_dict(), "| modes:", MANIFEST["mode"].value_counts().to_dict())
+            print(
+                "formats:",
+                MANIFEST["format"].value_counts().to_dict(),
+                "| modes:",
+                MANIFEST["mode"].value_counts().to_dict(),
+            )
             imb = usable["canonical_label"].value_counts()
             print(f"class imbalance ratio (max/min): {imb.max() / imb.min():.2f}")
     """))
@@ -133,13 +172,17 @@ def build():
             labels = sorted(usable["canonical_label"].unique())
             fig, axes = plt.subplots(len(labels), 4, figsize=(10, 2.4 * len(labels)), squeeze=False)
             for i, lab in enumerate(labels):
-                rows = usable[usable["canonical_label"] == lab].sample(min(4, (usable["canonical_label"] == lab).sum()), random_state=cfg["seed"])
+                rows = usable[usable["canonical_label"] == lab].sample(
+                    min(4, (usable["canonical_label"] == lab).sum()), random_state=cfg["seed"]
+                )
                 for j, ax in enumerate(axes[i]):
                     ax.axis("off")
                     if j < len(rows):
                         ax.imshow(load_image(base / rows.iloc[j]["relative_path"]).rgb)
                         ax.set_title(rows.iloc[j]["raw_label"][:28], fontsize=8)
-            plt.tight_layout(); save_fig(fig, "sample_grid_by_class", "real"); plt.show()
+            plt.tight_layout()
+            save_fig(fig, "sample_grid_by_class", "real")
+            plt.show()
 
             sizes = MANIFEST.groupby("duplicate_group_id").size().sort_values(ascending=False)
             big = sizes[sizes > 1].head(3)
@@ -148,10 +191,14 @@ def build():
                 members = MANIFEST[MANIFEST["duplicate_group_id"] == gid].head(6)
                 fig, axes = plt.subplots(1, len(members), figsize=(2.6 * len(members), 2.8), squeeze=False)
                 for ax, (_, r) in zip(axes[0], members.iterrows()):
-                    ax.imshow(load_image(base / r["relative_path"]).rgb); ax.axis("off")
+                    ax.imshow(load_image(base / r["relative_path"]).rgb)
+                    ax.axis("off")
                     ax.set_title(f"{r['publisher_split']}/{r['raw_label'][:14]}", fontsize=7)
-                fig.suptitle(f"duplicate cluster {gid} (review manually: a hash match is evidence, not proof)", fontsize=9)
-                save_fig(fig, f"duplicate_cluster_{gid}", "real"); plt.show()
+                fig.suptitle(
+                    f"duplicate cluster {gid} (review manually: a hash match is evidence, not proof)", fontsize=9
+                )
+                save_fig(fig, f"duplicate_cluster_{gid}", "real")
+                plt.show()
         else:
             print("Skipped: no manifest.")
     """))
@@ -167,16 +214,23 @@ def build():
     c.append(code("""
         from scalptrack import synthetic as syn
         from scalptrack.audit import grouped_stratified_split
+
         samples = syn.synthetic_classification_set(n_sources_per_class=30, variants_per_source=3, seed=cfg["seed"])
         demo = pd.DataFrame([{k: s[k] for k in ("image_id", "label", "group_id")} for s in samples])
-        naive = pd.Series(np.random.default_rng(cfg["seed"]).choice(["train", "validation", "test"], len(demo), p=[.7, .15, .15]))
+        naive = pd.Series(
+            np.random.default_rng(cfg["seed"]).choice(["train", "validation", "test"], len(demo), p=[0.7, 0.15, 0.15])
+        )
         grouped = grouped_stratified_split(demo["group_id"], demo["label"], (0.7, 0.15, 0.15), cfg["seed"])
-        leak = pd.DataFrame({
-            "split method": ["naive random (per image)", "grouped (per source)"],
-            "groups spanning >1 split": [int((demo.assign(s=naive).groupby("group_id")["s"].nunique() > 1).sum()),
-                                         int((demo.assign(s=grouped.values).groupby("group_id")["s"].nunique() > 1).sum())],
-            "total groups": demo["group_id"].nunique(),
-        })
+        leak = pd.DataFrame(
+            {
+                "split method": ["naive random (per image)", "grouped (per source)"],
+                "groups spanning >1 split": [
+                    int((demo.assign(s=naive).groupby("group_id")["s"].nunique() > 1).sum()),
+                    int((demo.assign(s=grouped.values).groupby("group_id")["s"].nunique() > 1).sum()),
+                ],
+                "total groups": demo["group_id"].nunique(),
+            }
+        )
         leak
     """))
 
@@ -187,24 +241,38 @@ def build():
         OpenCV decodes **BGR**; the package always converts to **RGB** for display and models.
     """))
     c.append(code("""
-        examples = [(d["rgb"], d["image_id"], "real") for d in DEV[:1]] + [(SYN["clean"]["rgb"], "closeup", "synthetic")]
+        examples = [(d["rgb"], d["image_id"], "real") for d in DEV[:1]] + [
+            (SYN["clean"]["rgb"], "closeup", "synthetic")
+        ]
         for rgb, name, prov in examples:
-            tmp = project_path(cfg, "results", "lab1", f"{name}.png"); save_rgb(tmp, rgb)
+            tmp = project_path(cfg, "results", "lab1", f"{name}.png")
+            save_rgb(tmp, rgb)
             bgr = cv2.imread(str(tmp))
             rec = load_image(tmp)
-            info = pd.DataFrame([describe_array(bgr) | {"array": "cv2.imread (BGR)"},
-                                 describe_array(rec.rgb) | {"array": "load_image (RGB)"},
-                                 describe_array(to_gray(rec.rgb)) | {"array": "grayscale (BT.601)"}]).set_index("array")
-            print(f"--- {name} [{prov}] ---"); display(info)
+            info = pd.DataFrame(
+                [
+                    describe_array(bgr) | {"array": "cv2.imread (BGR)"},
+                    describe_array(rec.rgb) | {"array": "load_image (RGB)"},
+                    describe_array(to_gray(rec.rgb)) | {"array": "grayscale (BT.601)"},
+                ]
+            ).set_index("array")
+            print(f"--- {name} [{prov}] ---")
+            display(info)
             fig, axes = plt.subplots(1, 4, figsize=(15, 3.6))
-            axes[0].imshow(bgr); axes[0].set_title("BGR array shown as RGB (wrong colours)")
-            axes[1].imshow(rec.rgb); axes[1].set_title("correct RGB")
-            axes[2].imshow(to_gray(rec.rgb), cmap="gray", vmin=0, vmax=255); axes[2].set_title("grayscale")
+            axes[0].imshow(bgr)
+            axes[0].set_title("BGR array shown as RGB (wrong colours)")
+            axes[1].imshow(rec.rgb)
+            axes[1].set_title("correct RGB")
+            axes[2].imshow(to_gray(rec.rgb), cmap="gray", vmin=0, vmax=255)
+            axes[2].set_title("grayscale")
             for ch, col in zip(range(3), "rgb"):
-                axes[3].hist(rec.rgb[..., ch].ravel(), bins=64, color=col, alpha=.5)
+                axes[3].hist(rec.rgb[..., ch].ravel(), bins=64, color=col, alpha=0.5)
             axes[3].set_title("channel histograms")
-            for a in axes[:3]: a.axis("off")
-            plt.tight_layout(); save_fig(fig, f"lab1_read_display_{name}", prov); plt.show()
+            for a in axes[:3]:
+                a.axis("off")
+            plt.tight_layout()
+            save_fig(fig, f"lab1_read_display_{name}", prov)
+            plt.show()
             y, x = rec.height_px // 2, rec.width_px // 2
             print("5x5 grayscale neighbourhood at image centre (raw uint8 values):")
             display(pd.DataFrame(pixel_neighbourhood(to_gray(rec.rgb), x, y, 2)))
@@ -215,11 +283,16 @@ def build():
         res = compare_resize_methods(crop, 0.35)
         up = {k: cv2.resize(v, crop.shape[1::-1], interpolation=cv2.INTER_NEAREST) for k, v in res.items()}
         fig, axes = plt.subplots(1, 4, figsize=(14, 3.8))
-        axes[0].imshow(crop); axes[0].set_title(f"native crop {crop.shape[1]}x{crop.shape[0]}")
+        axes[0].imshow(crop)
+        axes[0].set_title(f"native crop {crop.shape[1]}x{crop.shape[0]}")
         for ax, (k, v) in zip(axes[1:], up.items()):
-            ax.imshow(v); ax.set_title(f"{k} at 0.35x (shown enlarged)")
-        for a in axes: a.axis("off")
-        plt.tight_layout(); save_fig(fig, f"lab1_resize_comparison_{name}", prov); plt.show()
+            ax.imshow(v)
+            ax.set_title(f"{k} at 0.35x (shown enlarged)")
+        for a in axes:
+            a.axis("off")
+        plt.tight_layout()
+        save_fig(fig, f"lab1_resize_comparison_{name}", prov)
+        plt.show()
     """))
     c.append(md("""
         **Why measurement uses native pixels.** Nearest-neighbour keeps hard but jagged edges, bilinear blurs them, and
@@ -230,6 +303,7 @@ def build():
     c.append(code("""
         from scalptrack import measurements as ms
         from scalptrack.segmentation import threshold_otsu
+
         f = syn.straight_shafts(3, 5.0, 90.0, size=200)
         img = syn.render_hair_image(f["mask"], noise_sigma=0, blur_sigma=0.5, seed=1)
         rows = []
@@ -238,9 +312,15 @@ def build():
             mask, _ = threshold_otsu(to_gray(small))
             w = ms.estimate_shaft_width(mask, cfg, "synthetic")
             med = w["median_px"]
-            rows.append({"scale": scale, "median_width_px_at_scale": med,
-                         "width_mapped_back_to_native_px": None if med is None else med / scale,
-                         "true_native_width_px": 5.0, "valid_samples": w["valid_samples"]})
+            rows.append(
+                {
+                    "scale": scale,
+                    "median_width_px_at_scale": med,
+                    "width_mapped_back_to_native_px": None if med is None else med / scale,
+                    "true_native_width_px": 5.0,
+                    "valid_samples": w["valid_samples"],
+                }
+            )
         pd.DataFrame(rows)
     """))
     c.append(md("""
@@ -252,8 +332,10 @@ def build():
     """))
     c.append(code("""
         cap = audit.capability_audit(MANIFEST)
-        cap_path = project_path(cfg, "manifests", "capability_audit.csv"); cap.to_csv(cap_path, index=False)
-        print("saved", rel(cap_path)); cap
+        cap_path = project_path(cfg, "manifests", "capability_audit.csv")
+        cap.to_csv(cap_path, index=False)
+        print("saved", rel(cap_path))
+        cap
     """))
     c.append(md("""
         ## 7. Limitations and edge cases

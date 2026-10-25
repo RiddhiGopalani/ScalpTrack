@@ -13,11 +13,11 @@ SCHEMA_VERSION = "1.0"
 
 
 class Status(str, Enum):
-    OK = "ok"                      # computed under its stated prerequisites (not clinical validity)
-    EXPLORATORY = "exploratory"    # provisional result without adequate real ground truth
+    OK = "ok"  # computed under its stated prerequisites (not clinical validity)
+    EXPLORATORY = "exploratory"  # provisional result without adequate real ground truth
     SYNTHETIC_DEMO = "synthetic_demo"
-    UNAVAILABLE = "unavailable"    # required data / calibration / quality absent
-    FAILED = "failed"              # runtime or validation failure
+    UNAVAILABLE = "unavailable"  # required data / calibration / quality absent
+    FAILED = "failed"  # runtime or validation failure
     NOT_REQUESTED = "not_requested"
 
     def __str__(self) -> str:  # so f-strings print "ok" rather than "Status.OK"

@@ -21,7 +21,7 @@ MODULES = ["nb00", "nb01", "nb02", "nb03", "nb04", "nb05", "nb06", "nb07", "nb08
 
 
 def main(argv=None) -> int:
-    prefixes = (argv if argv is not None else sys.argv[1:])
+    prefixes = argv if argv is not None else sys.argv[1:]
     out_dir = HERE.parent / "notebooks"
     out_dir.mkdir(exist_ok=True)
     for name in MODULES:

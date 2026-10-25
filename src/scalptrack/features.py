@@ -19,14 +19,44 @@ N_PYRAMID_BANDS = 4
 
 FEATURE_GROUPS: dict[str, list[str]] = {
     "intensity": ["gray_mean", "gray_std", "gray_p05", "gray_p50", "gray_p95"],
-    "color": ["hue_cos_mean", "hue_sin_mean", "hue_resultant", "s_mean", "s_std", "v_mean", "v_std",
-              "lab_L_mean", "lab_L_std", "lab_a_mean", "lab_a_std", "lab_b_mean", "lab_b_std"],
-    "edge": ["canny_edge_fraction", "sobel_mag_mean", "sobel_mag_std",
-             "grad_orient_0_45", "grad_orient_45_90", "grad_orient_90_135", "grad_orient_135_180",
-             "grad_orientation_coherence"],
+    "color": [
+        "hue_cos_mean",
+        "hue_sin_mean",
+        "hue_resultant",
+        "s_mean",
+        "s_std",
+        "v_mean",
+        "v_std",
+        "lab_L_mean",
+        "lab_L_std",
+        "lab_a_mean",
+        "lab_a_std",
+        "lab_b_mean",
+        "lab_b_std",
+    ],
+    "edge": [
+        "canny_edge_fraction",
+        "sobel_mag_mean",
+        "sobel_mag_std",
+        "grad_orient_0_45",
+        "grad_orient_45_90",
+        "grad_orient_90_135",
+        "grad_orient_135_180",
+        "grad_orientation_coherence",
+    ],
     "texture_hist": ["hist_entropy_bits"],
-    "texture_glcm": [f"{n}_{s}" for n in ("glcm_contrast", "glcm_asm", "glcm_energy", "glcm_entropy_bits",
-                                           "glcm_homogeneity", "glcm_correlation") for s in ("mean", "std")],
+    "texture_glcm": [
+        f"{n}_{s}"
+        for n in (
+            "glcm_contrast",
+            "glcm_asm",
+            "glcm_energy",
+            "glcm_entropy_bits",
+            "glcm_homogeneity",
+            "glcm_correlation",
+        )
+        for s in ("mean", "std")
+    ],
     "multiscale": [f"laplacian_band_energy_l{k}" for k in range(N_PYRAMID_BANDS)],
 }
 
@@ -36,6 +66,7 @@ ALL_GROUPS = tuple(FEATURE_GROUPS)
 
 
 def feature_names(groups=ALL_GROUPS) -> list[str]:
+    """Ordered feature names for the given groups (all groups by default)."""
     unknown = set(groups) - set(FEATURE_GROUPS)
     if unknown:
         raise KeyError(f"Unknown feature groups: {sorted(unknown)}")
@@ -59,29 +90,48 @@ def extract_features(rgb_roi: np.ndarray, config: dict, resize: bool = True) -> 
     f: dict[str, float] = {}
 
     p = np.percentile(gray, [5, 50, 95])
-    f.update(gray_mean=float(gray.mean()), gray_std=float(gray.std()),
-             gray_p05=float(p[0]), gray_p50=float(p[1]), gray_p95=float(p[2]))
+    f.update(
+        gray_mean=float(gray.mean()),
+        gray_std=float(gray.std()),
+        gray_p05=float(p[0]),
+        gray_p50=float(p[1]),
+        gray_p95=float(p[2]),
+    )
 
     hue = circular_hue_stats(hue_degrees(hsv), weights=hsv[..., 1])
     rad = np.deg2rad(hue["hue_mean_deg"]) if not np.isnan(hue["hue_mean_deg"]) else 0.0
-    f.update(hue_cos_mean=float(np.cos(rad) * hue["hue_resultant"]),
-             hue_sin_mean=float(np.sin(rad) * hue["hue_resultant"]),
-             hue_resultant=hue["hue_resultant"],
-             s_mean=float(hsv[..., 1].mean()), s_std=float(hsv[..., 1].std()),
-             v_mean=float(hsv[..., 2].mean()), v_std=float(hsv[..., 2].std()),
-             lab_L_mean=float(lab[..., 0].mean()), lab_L_std=float(lab[..., 0].std()),
-             lab_a_mean=float(lab[..., 1].mean()), lab_a_std=float(lab[..., 1].std()),
-             lab_b_mean=float(lab[..., 2].mean()), lab_b_std=float(lab[..., 2].std()))
+    f.update(
+        hue_cos_mean=float(np.cos(rad) * hue["hue_resultant"]),
+        hue_sin_mean=float(np.sin(rad) * hue["hue_resultant"]),
+        hue_resultant=hue["hue_resultant"],
+        s_mean=float(hsv[..., 1].mean()),
+        s_std=float(hsv[..., 1].std()),
+        v_mean=float(hsv[..., 2].mean()),
+        v_std=float(hsv[..., 2].std()),
+        lab_L_mean=float(lab[..., 0].mean()),
+        lab_L_std=float(lab[..., 0].std()),
+        lab_a_mean=float(lab[..., 1].mean()),
+        lab_a_std=float(lab[..., 1].std()),
+        lab_b_mean=float(lab[..., 2].mean()),
+        lab_b_std=float(lab[..., 2].std()),
+    )
 
     e = config["edges"]
     low, high = e["canny_pairs"][len(e["canny_pairs"]) // 2]
     sob = edg.sobel_gradients(gray, e["sobel_ksize"])
     oh = edg.orientation_histogram(sob["gx"], sob["gy"], bins=4)
-    f.update(canny_edge_fraction=float(edg.canny(gray, low, high, e["canny_blur_ksize"], e["canny_blur_sigma"]).mean()),
-             sobel_mag_mean=float(sob["magnitude"].mean()), sobel_mag_std=float(sob["magnitude"].std()),
-             grad_orient_0_45=float(oh[0]), grad_orient_45_90=float(oh[1]),
-             grad_orient_90_135=float(oh[2]), grad_orient_135_180=float(oh[3]),
-             grad_orientation_coherence=edg.orientation_coherence(sob["gx"], sob["gy"]))
+    f.update(
+        canny_edge_fraction=float(
+            edg.canny(gray, low, high, e["canny_blur_ksize"], e["canny_blur_sigma"]).mean()
+        ),
+        sobel_mag_mean=float(sob["magnitude"].mean()),
+        sobel_mag_std=float(sob["magnitude"].std()),
+        grad_orient_0_45=float(oh[0]),
+        grad_orient_45_90=float(oh[1]),
+        grad_orient_90_135=float(oh[2]),
+        grad_orient_135_180=float(oh[3]),
+        grad_orientation_coherence=edg.orientation_coherence(sob["gx"], sob["gy"]),
+    )
 
     f["hist_entropy_bits"] = texture.histogram_entropy(gray)
     f.update(texture.glcm_features(gray, t["levels"], t["distances"], t["angles_deg"])["aggregate"])

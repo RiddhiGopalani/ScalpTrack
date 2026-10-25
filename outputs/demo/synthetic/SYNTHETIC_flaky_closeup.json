@@ -9,7 +9,7 @@
     200
   ],
   "input_hash": "acf9c2684d6fdc7b5dafa92b59d4f05fbc4a7d4eec17805041a1023cddbba74c",
-  "run_config_id": "b42a3ae911f0",
+  "run_config_id": "aa82b17270f3",
   "quality": {
     "width_px": 200,
     "height_px": 200,
@@ -33,7 +33,7 @@
     },
     "model_id": "synthetic_fixture__random_forest__seed42",
     "task_mode": "image_classification",
-    "inference_seconds": 0.10458019998623058,
+    "inference_seconds": 0.08569269999998141,
     "reason": "Model trained on SYNTHETIC fixtures: labels are not scalp conditions"
   },
   "hair_count": {
@@ -151,14 +151,14 @@
     "figure_result_panel": "SYNTHETIC_flaky_closeup_result_panel.png"
   },
   "timings_s": {
-    "load_validate": 0.00019319995772093534,
-    "quality": 0.000658600009046495,
-    "faces": 0.17303160001756623,
-    "segmentation_edges": 0.008890099998097867,
-    "features": 0.05666890001157299,
-    "classification": 0.10458819998893887,
-    "measurements": 0.008911099983379245,
-    "total": 0.35306569997919723
+    "load_validate": 0.00011740000036297715,
+    "quality": 0.001170199999705801,
+    "faces": 0.20319500000005064,
+    "segmentation_edges": 0.009180600000036065,
+    "features": 0.08124260000022332,
+    "classification": 0.08570379999991928,
+    "measurements": 0.018443999999817606,
+    "total": 0.39944610000020475
   },
   "provenance": "synthetic",
   "run": {

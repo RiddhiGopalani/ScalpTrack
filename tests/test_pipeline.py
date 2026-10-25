@@ -32,8 +32,12 @@ def test_full_pipeline_without_model(cfg, png_path, tmp_path):
 def test_pipeline_with_roi_and_model(cfg, hair_rgb):
     samples = syn.synthetic_classification_set(6, 2, seed=2, size=96)
     table = clf.feature_table_from_arrays(samples, cfg)
-    table["split"] = grouped_stratified_split(table["duplicate_group_id"], table["canonical_label"], (0.6, 0.2, 0.2), 0).values
-    bundle = clf.make_bundle(clf.select_on_validation(table, cfg), cfg, "image_classification", "synthetic", "syn")
+    table["split"] = grouped_stratified_split(
+        table["duplicate_group_id"], table["canonical_label"], (0.6, 0.2, 0.2), 0
+    ).values
+    bundle = clf.make_bundle(
+        clf.select_on_validation(table, cfg), cfg, "image_classification", "synthetic", "syn"
+    )
     r = analyze_image(hair_rgb, (10, 10, 110, 120), bundle, cfg, provenance="synthetic", run_faces=False)
     assert r["roi_xyxy"] == [10, 10, 110, 120]
     assert r["classification"]["status"] == "synthetic_demo" and r["classification"]["class_scores"]
@@ -56,13 +60,17 @@ def test_blank_image_measurements_do_not_crash(cfg):
     blank = np.full((120, 120, 3), 180, np.uint8)
     r = analyze_image(blank, None, None, cfg, run_faces=False)
     assert r["status"] == "ok"
-    assert r["hair_count"]["status"] in ("unavailable", "exploratory")   # blurry/flat -> quality gate
+    assert r["hair_count"]["status"] in ("unavailable", "exploratory")  # blurry/flat -> quality gate
 
 
 def test_pipeline_with_synthetic_stereo(cfg, hair_rgb):
     sc = syn.render_stereo_scene(width=320, height=240, seed=1, include_dome=False)
-    pair = {"left": sc["left"], "right": sc["right"], "calibration": sc["calibration"],
-            "meta": {"pair_id": sc["pair_id"], "same_static_region_confirmed": True, "provenance": "synthetic"}}
+    pair = {
+        "left": sc["left"],
+        "right": sc["right"],
+        "calibration": sc["calibration"],
+        "meta": {"pair_id": sc["pair_id"], "same_static_region_confirmed": True, "provenance": "synthetic"},
+    }
     r = analyze_image(hair_rgb, None, None, cfg, provenance="synthetic", run_faces=False, stereo_pair=pair)
     assert r["stereo"]["status"] == "synthetic_demo" and r["stereo"]["depth_unit"] == "mm"
 
@@ -70,5 +78,10 @@ def test_pipeline_with_synthetic_stereo(cfg, hair_rgb):
 def test_jsonable_and_flatten():
     d = {"a": np.float32(1.5), "b": np.arange(3), "c": {"d": np.nan, "_hidden": 1}, "e": np.zeros((100, 100))}
     j = to_jsonable(d)
-    assert j == {"a": 1.5, "b": [0, 1, 2], "c": {"d": None}, "e": {"array_shape": [100, 100], "dtype": "float64"}}
+    assert j == {
+        "a": 1.5,
+        "b": [0, 1, 2],
+        "c": {"d": None},
+        "e": {"array_shape": [100, 100], "dtype": "float64"},
+    }
     assert flatten({"x": {"y": 1, "z": [1, 2]}}) == {"x.y": 1, "x.z": "[1, 2]"}

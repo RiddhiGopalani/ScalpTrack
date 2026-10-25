@@ -64,8 +64,10 @@ def main(argv=None) -> int:
         plt.close()
     print(f"[audit] manifest: {paths['manifest']}")
     print(f"[audit] report:   {paths['report']}")
-    print(f"[audit] unreadable={report['n_unreadable']}  missing_label={report['n_missing_label']}  "
-          f"label_conflicts={report['n_label_conflict']}")
+    print(
+        f"[audit] unreadable={report['n_unreadable']}  missing_label={report['n_missing_label']}  "
+        f"label_conflicts={report['n_label_conflict']}"
+    )
     print(f"[audit] duplicates: {report['duplicates']}")
     print(f"[audit] split decision: {report['split'].get('decision')}")
     print(audit.split_count_table(manifest).to_string())

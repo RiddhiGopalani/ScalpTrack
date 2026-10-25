@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import pytest
 from PIL import Image
 
@@ -10,9 +9,18 @@ from scalptrack.config import load_config
 def _cfg_for(root, extra_source=None):
     cfg = load_config()
     cfg = {**cfg, "root": str(root)}
-    cfg["datasets"] = {"primary": "toy", "sources": {"toy": {"dir": "data/raw/toy", "url": "local", "license": "test",
-                                                            "task_type": "image_classification",
-                                                            "layout": "split_class_folders"}}}
+    cfg["datasets"] = {
+        "primary": "toy",
+        "sources": {
+            "toy": {
+                "dir": "data/raw/toy",
+                "url": "local",
+                "license": "test",
+                "task_type": "image_classification",
+                "layout": "split_class_folders",
+            }
+        },
+    }
     if extra_source:
         cfg["datasets"]["sources"].update(extra_source)
     return cfg
@@ -60,17 +68,22 @@ def test_flipped_copy_is_near_duplicate(tmp_path):
 
 def test_dhash_lookalike_rejected_by_thumbnail_check():
     from scalptrack import synthetic as syn
+
     # Two DIFFERENT images with strands at the same positions collide under dHash alone.
-    a = np.asarray(Image.fromarray(syn.synthetic_texture_sample("synthetic_sparse_strands", 103, 64)).convert("L"))
-    b = np.asarray(Image.fromarray(syn.synthetic_texture_sample("synthetic_sparse_strands", 201, 64)).convert("L"))
+    a = np.asarray(
+        Image.fromarray(syn.synthetic_texture_sample("synthetic_sparse_strands", 103, 64)).convert("L")
+    )
+    b = np.asarray(
+        Image.fromarray(syn.synthetic_texture_sample("synthetic_sparse_strands", 201, 64)).convert("L")
+    )
     flipped = np.ascontiguousarray(a[:, ::-1])
     hashes = np.array([audit.dihedral_dhashes(x) for x in (a, b, flipped)], dtype=np.uint64)
     thumbs = [audit.thumbnail(x) for x in (a, b, flipped)]
     g_hash_only, st0 = audit.duplicate_groups(["h1", "h2", "h3"], hashes, 6)
     g_verified, st1 = audit.duplicate_groups(["h1", "h2", "h3"], hashes, 6, thumbs, 0.9)
-    assert g_hash_only[0] == g_hash_only[1]              # false merge without verification
-    assert g_verified[0] != g_verified[1]                # rejected by thumbnail correlation
-    assert g_verified[0] == g_verified[2]                # true flipped copy still merged
+    assert g_hash_only[0] == g_hash_only[1]  # false merge without verification
+    assert g_verified[0] != g_verified[1]  # rejected by thumbnail correlation
+    assert g_verified[0] == g_verified[2]  # true flipped copy still merged
     assert st1["dhash_candidate_pairs"] > st1["near_duplicate_pairs"]
 
 
@@ -116,8 +129,18 @@ def test_yolo_export_region_rows(tmp_path):
         img = (np.random.default_rng(k).random((100, 80, 3)) * 255).astype(np.uint8)
         Image.fromarray(img).save(base / "train" / "images" / f"im{k}.jpg")
         (base / "train" / "labels" / f"im{k}.txt").write_text("0 0.5 0.5 0.4 0.4\n1 0.2 0.2 0.2 0.2\n")
-    cfg = _cfg_for(tmp_path, {"yolo": {"dir": "data/raw/yolo", "license": "CC BY 4.0", "url": "x",
-                                       "task_type": "region_classification", "layout": "yolo"}})
+    cfg = _cfg_for(
+        tmp_path,
+        {
+            "yolo": {
+                "dir": "data/raw/yolo",
+                "license": "CC BY 4.0",
+                "url": "x",
+                "task_type": "region_classification",
+                "layout": "yolo",
+            }
+        },
+    )
     man, rep = audit.build_manifest(cfg, "yolo", progress=False)
     regions = man[man["task_type"] == "region_classification"]
     assert len(regions) == 6 and set(regions["raw_label"]) == {"Psoriasis", "Lichen-Planus"}

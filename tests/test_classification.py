@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import pytest
 
 from scalptrack import classification as clf
@@ -11,7 +10,9 @@ from scalptrack.audit import grouped_stratified_split
 def synthetic_table(cfg):
     samples = syn.synthetic_classification_set(n_sources_per_class=10, variants_per_source=3, seed=1, size=96)
     table = clf.feature_table_from_arrays(samples, cfg)
-    table["split"] = grouped_stratified_split(table["duplicate_group_id"], table["canonical_label"], (0.6, 0.2, 0.2), cfg["seed"]).values
+    table["split"] = grouped_stratified_split(
+        table["duplicate_group_id"], table["canonical_label"], (0.6, 0.2, 0.2), cfg["seed"]
+    ).values
     return table
 
 
@@ -37,7 +38,9 @@ def test_preprocessing_fitted_on_train_only(cfg, synthetic_table):
     model = sel["best_model"]
     if "scale" in model.named_steps:
         train = synthetic_table[synthetic_table["split"] == "train"][sel["feature_names"]].to_numpy()
-        np.testing.assert_allclose(model.named_steps["scale"].mean_, np.nanmean(train, axis=0), rtol=1e-9, atol=1e-9)
+        np.testing.assert_allclose(
+            model.named_steps["scale"].mean_, np.nanmean(train, axis=0), rtol=1e-9, atol=1e-9
+        )
 
 
 def test_ablation_table(cfg, synthetic_table):

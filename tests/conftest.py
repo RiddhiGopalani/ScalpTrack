@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from scalptrack.config import load_config
 from scalptrack import synthetic as syn
+from scalptrack.config import load_config
 
 
 @pytest.fixture(scope="session")
@@ -36,11 +36,16 @@ def class_folder_dataset(tmp_path):
             d = base / "Wrapper" / split / cls
             d.mkdir(parents=True)
             for k in range(4):
-                img = syn.synthetic_texture_sample("synthetic_sparse_strands" if cls == "Class A" else "synthetic_flaky_surface",
-                                                   seed=100 * si + 10 * ci + k, size=64)
+                img = syn.synthetic_texture_sample(
+                    "synthetic_sparse_strands" if cls == "Class A" else "synthetic_flaky_surface",
+                    seed=100 * si + 10 * ci + k,
+                    size=64,
+                )
                 Image.fromarray(img).save(d / f"{k}.png")
     # exact duplicate of a train image placed in test -> leakage that must be detected
-    (base / "Wrapper" / "test" / "Class A" / "dup.png").write_bytes((base / "Wrapper" / "train" / "Class A" / "0.png").read_bytes())
+    (base / "Wrapper" / "test" / "Class A" / "dup.png").write_bytes(
+        (base / "Wrapper" / "train" / "Class A" / "0.png").read_bytes()
+    )
     (base / "Wrapper" / "train" / "Class B" / "broken.jpg").write_bytes(b"not a jpeg at all")
     (base / "Wrapper" / "readme.txt").write_text("notes")
     return root, base, rng

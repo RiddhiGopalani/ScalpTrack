@@ -36,7 +36,9 @@ def build():
     c.append(md("## 1. GLCM on one ROI — per-offset table and aggregation"))
     c.append(code("""
         gray = to_gray(SYN["flakes"]["rgb"])
-        res = texture.glcm_features(gray, cfg["texture"]["levels"], cfg["texture"]["distances"], cfg["texture"]["angles_deg"])
+        res = texture.glcm_features(
+            gray, cfg["texture"]["levels"], cfg["texture"]["distances"], cfg["texture"]["angles_deg"]
+        )
         per = pd.DataFrame(res["per_offset"])
         display(per.round(4))
         pd.Series(res["aggregate"]).round(4).to_frame("aggregate (12 offsets)")
@@ -57,10 +59,16 @@ def build():
         print(f"max |ours - skimage| over 12 offsets: {max(diffs):.2e}")
         P, _ = texture.glcm(q, 1, 0, 32)
         fig, ax = plt.subplots(1, 2, figsize=(9, 4))
-        ax[0].imshow(q, cmap="gray"); ax[0].set_title("quantised to 32 levels"); ax[0].axis("off")
-        ax[1].imshow(np.log10(P + 1e-6), cmap="viridis"); ax[1].set_title("log10 GLCM (d=1, 0 deg)")
-        ax[1].set_xlabel("j"); ax[1].set_ylabel("i")
-        plt.tight_layout(); save_fig(fig, "glcm_matrix", "synthetic"); plt.show()
+        ax[0].imshow(q, cmap="gray")
+        ax[0].set_title("quantised to 32 levels")
+        ax[0].axis("off")
+        ax[1].imshow(np.log10(P + 1e-6), cmap="viridis")
+        ax[1].set_title("log10 GLCM (d=1, 0 deg)")
+        ax[1].set_xlabel("j")
+        ax[1].set_ylabel("i")
+        plt.tight_layout()
+        save_fig(fig, "glcm_matrix", "synthetic")
+        plt.show()
     """))
     c.append(md("""
         ## 2. Histogram entropy ≠ GLCM entropy
@@ -72,11 +80,19 @@ def build():
         rows = []
         for name, im in (("original", gray), ("pixels shuffled", shuffled)):
             agg = texture.glcm_features(im, 32)["aggregate"]
-            rows.append({"image": name, "hist_entropy_bits": texture.histogram_entropy(im),
-                         "glcm_entropy_bits_mean": agg["glcm_entropy_bits_mean"], "glcm_contrast_mean": agg["glcm_contrast_mean"],
-                         "glcm_energy_mean": agg["glcm_energy_mean"], "glcm_homogeneity_mean": agg["glcm_homogeneity_mean"]})
+            rows.append(
+                {
+                    "image": name,
+                    "hist_entropy_bits": texture.histogram_entropy(im),
+                    "glcm_entropy_bits_mean": agg["glcm_entropy_bits_mean"],
+                    "glcm_contrast_mean": agg["glcm_contrast_mean"],
+                    "glcm_energy_mean": agg["glcm_energy_mean"],
+                    "glcm_homogeneity_mean": agg["glcm_homogeneity_mean"],
+                }
+            )
         fig = show_grid([gray, shuffled], ["original", "same pixels, shuffled"], ncols=2, size=3.5)
-        save_fig(fig, "entropy_shuffle_demo", "synthetic"); plt.show()
+        save_fig(fig, "entropy_shuffle_demo", "synthetic")
+        plt.show()
         pd.DataFrame(rows).round(4)
     """))
     c.append(md("""
@@ -87,17 +103,25 @@ def build():
     """))
     c.append(code("""
         from scalptrack.segmentation import segment_candidates
-        rgb = SYN["flakes"]["rgb"]; g = to_gray(rgb)
+
+        rgb = SYN["flakes"]["rgb"]
+        g = to_gray(rgb)
         seg = segment_candidates(rgb, cfg)
         scalp = seg["scalp"]
         zero_filled = np.where(scalp, g, 0).astype(np.uint8)
         a_masked = texture.glcm_features(g, 32, mask=scalp)["aggregate"]
         a_zero = texture.glcm_features(zero_filled, 32)["aggregate"]
         patches = texture.interior_patches(scalp, 24, 12)
-        a_patch = pd.DataFrame([texture.glcm_features(g[y0:y1, x0:x1], 32)["aggregate"] for x0, y0, x1, y1 in patches]).mean()
-        pd.DataFrame({"masked valid pairs": a_masked, "zero-filled whole array (WRONG)": a_zero,
-                      f"mean of {len(patches)} interior 24px patches": a_patch}).loc[
-            ["glcm_contrast_mean", "glcm_energy_mean", "glcm_entropy_bits_mean", "glcm_homogeneity_mean"]].round(4)
+        a_patch = pd.DataFrame(
+            [texture.glcm_features(g[y0:y1, x0:x1], 32)["aggregate"] for x0, y0, x1, y1 in patches]
+        ).mean()
+        pd.DataFrame(
+            {
+                "masked valid pairs": a_masked,
+                "zero-filled whole array (WRONG)": a_zero,
+                f"mean of {len(patches)} interior 24px patches": a_patch,
+            }
+        ).loc[["glcm_contrast_mean", "glcm_energy_mean", "glcm_entropy_bits_mean", "glcm_homogeneity_mean"]].round(4)
     """))
 
     c.append(md("""
@@ -108,30 +132,46 @@ def build():
     c.append(code("""
         samples = syn.synthetic_classification_set(n_sources_per_class=20, variants_per_source=1, seed=cfg["seed"])
         t0 = time.perf_counter()
-        syn_feats = pd.DataFrame([ft.extract_features(s["image"], cfg) | {"label": s["label"], "image_id": s["image_id"]} for s in samples])
+        syn_feats = pd.DataFrame(
+            [ft.extract_features(s["image"], cfg) | {"label": s["label"], "image_id": s["image_id"]} for s in samples]
+        )
         print(f"{len(samples)} synthetic images, {len(ft.feature_names())} features, {time.perf_counter() - t0:.1f}s")
-        p = project_path(cfg, "results", NB, "SYNTHETIC_feature_table.csv", create=True); syn_feats.to_csv(p, index=False)
+        p = project_path(cfg, "results", NB, "SYNTHETIC_feature_table.csv", create=True)
+        syn_feats.to_csv(p, index=False)
         print("saved", rel(p))
         real_feats = None
         if REAL:
             dev = development_images(cfg, n_per_class=8, max_total=200)
-            real_feats = pd.DataFrame([ft.extract_features(d["rgb"], cfg) | {"label": d["label"], "image_id": d["image_id"]} for d in dev])
-            p = project_path(cfg, "results", NB, "real_dev_feature_table.csv", create=True); real_feats.to_csv(p, index=False)
+            real_feats = pd.DataFrame(
+                [ft.extract_features(d["rgb"], cfg) | {"label": d["label"], "image_id": d["image_id"]} for d in dev]
+            )
+            p = project_path(cfg, "results", NB, "real_dev_feature_table.csv", create=True)
+            real_feats.to_csv(p, index=False)
             print("saved", rel(p), "-", len(real_feats), "development images (train/validation only)")
         pd.Series({g: len(v) for g, v in ft.FEATURE_GROUPS.items()}, name="features per group").to_frame()
     """))
     c.append(code("""
-        cols = ["glcm_contrast_mean", "glcm_energy_mean", "glcm_entropy_bits_mean", "hist_entropy_bits",
-                "glcm_homogeneity_mean", "laplacian_band_energy_l0"]
+        cols = [
+            "glcm_contrast_mean",
+            "glcm_energy_mean",
+            "glcm_entropy_bits_mean",
+            "hist_entropy_bits",
+            "glcm_homogeneity_mean",
+            "laplacian_band_energy_l0",
+        ]
         for table, prov in ((syn_feats, "synthetic"), (real_feats, "real")):
             if table is None:
-                print("real feature distributions: skipped (dataset not available)"); continue
+                print("real feature distributions: skipped (dataset not available)")
+                continue
             fig, axes = plt.subplots(1, len(cols), figsize=(3.2 * len(cols), 3.8))
             for ax, col in zip(axes, cols):
                 table.boxplot(column=col, by="label", ax=ax, rot=75, fontsize=7)
-                ax.set_title(col, fontsize=8); ax.set_xlabel("")
+                ax.set_title(col, fontsize=8)
+                ax.set_xlabel("")
             fig.suptitle(f"Texture feature distributions by label [{prov}]")
-            plt.tight_layout(); save_fig(fig, "feature_distributions", prov); plt.show()
+            plt.tight_layout()
+            save_fig(fig, "feature_distributions", prov)
+            plt.show()
     """))
     c.append(md("""
         Contrast, energy and entropy are **statistical descriptors**, not validated scales of hydration, cleanliness or
@@ -146,7 +186,9 @@ def build():
         for size in (128, 256, 512):
             im = cv2.resize(big, (size, size), interpolation=cv2.INTER_AREA)
             for levels in (16, 32, 64, 256):
-                t0 = time.perf_counter(); texture.glcm_features(im, levels); dt = time.perf_counter() - t0
+                t0 = time.perf_counter()
+                texture.glcm_features(im, levels)
+                dt = time.perf_counter() - t0
                 rows.append({"image_side_px": size, "levels": levels, "seconds_12_offsets": dt})
         cost = pd.DataFrame(rows).pivot(index="levels", columns="image_side_px", values="seconds_12_offsets")
         cost.round(4)
@@ -160,7 +202,9 @@ def build():
         signed float arrays.
     """))
     c.append(code("""
-        inputs = [(SYN["flakes"]["rgb"], "flakes", "synthetic")] + [(d["rgb"], d["image_id"], "real") for d in DEV[:1]]
+        inputs = [(SYN["flakes"]["rgb"], "flakes", "synthetic")] + [
+            (d["rgb"], d["image_id"], "real") for d in DEV[:1]
+        ]
         for rgb, name, prov in inputs:
             g = to_gray(rgb)[:199, :187]  # deliberately odd dimensions
             gp = pyramids.gaussian_pyramid(g, cfg["pyramids"]["max_levels"], cfg["pyramids"]["min_side_px"])
@@ -168,18 +212,26 @@ def build():
             rec = pyramids.reconstruct(lp)
             fig, axes = plt.subplots(2, len(gp), figsize=(3.1 * len(gp), 6.2))
             for k in range(len(gp)):
-                axes[0, k].imshow(gp[k], cmap="gray", vmin=0, vmax=255); axes[0, k].set_title(f"G{k} {gp[k].shape[1]}x{gp[k].shape[0]}")
+                axes[0, k].imshow(gp[k], cmap="gray", vmin=0, vmax=255)
+                axes[0, k].set_title(f"G{k} {gp[k].shape[1]}x{gp[k].shape[0]}")
                 if k < len(gp) - 1:
                     m = np.abs(lp[k]).max() or 1
-                    axes[1, k].imshow(lp[k], cmap="RdBu_r", vmin=-m, vmax=m); axes[1, k].set_title(f"L{k} residual (signed)")
+                    axes[1, k].imshow(lp[k], cmap="RdBu_r", vmin=-m, vmax=m)
+                    axes[1, k].set_title(f"L{k} residual (signed)")
                 else:
-                    axes[1, k].imshow(lp[k], cmap="gray"); axes[1, k].set_title("coarsest low-pass")
-                axes[0, k].axis("off"); axes[1, k].axis("off")
+                    axes[1, k].imshow(lp[k], cmap="gray")
+                    axes[1, k].set_title("coarsest low-pass")
+                axes[0, k].axis("off")
+                axes[1, k].axis("off")
             fig.suptitle(f"Gaussian (top) and Laplacian (bottom) pyramids - {name} [{prov}]")
-            plt.tight_layout(); save_fig(fig, f"pyramids_{name}", prov); plt.show()
+            plt.tight_layout()
+            save_fig(fig, f"pyramids_{name}", prov)
+            plt.show()
             err = pyramids.reconstruction_error(g, rec)
             tbl = pd.DataFrame(pyramids.pyramid_table(gp, lp))
-            print(f"{name}: reconstruction max |error| = {err['max_abs_error']:.2e}, MSE = {err['mse']:.2e} (intensity units)")
+            print(
+                f"{name}: reconstruction max |error| = {err['max_abs_error']:.2e}, MSE = {err['mse']:.2e} (intensity units)"
+            )
             display(tbl.round(3))
     """))
     c.append(md("""
@@ -191,14 +243,18 @@ def build():
     c.append(code("""
         rows = []
         for w in (2, 4, 8, 14):
-            im = to_gray(syn.render_hair_image(syn.straight_shafts(4, w, 90, size=256)["mask"], noise_sigma=0, seed=0))
+            im = to_gray(
+                syn.render_hair_image(syn.straight_shafts(4, w, 90, size=256)["mask"], noise_sigma=0, seed=0)
+            )
             e = pyramids.band_energies(pyramids.laplacian_pyramid(pyramids.gaussian_pyramid(im, 4, 16)))
             tot = sum(e)
             rows.append({"shaft_width_px": w, **{f"L{k} share": v / tot for k, v in enumerate(e)}})
         bands = pd.DataFrame(rows).set_index("shaft_width_px")
-        ax = bands.plot.bar(stacked=True, figsize=(7, 3.5)); ax.set_ylabel("share of Laplacian band energy")
+        ax = bands.plot.bar(stacked=True, figsize=(7, 3.5))
+        ax.set_ylabel("share of Laplacian band energy")
         ax.set_title("Where shaft detail lives in the Laplacian pyramid")
-        save_fig(ax.figure, "band_energy_by_width", "synthetic"); plt.show()
+        save_fig(ax.figure, "band_energy_by_width", "synthetic")
+        plt.show()
         bands.round(3)
     """))
     c.append(md("""

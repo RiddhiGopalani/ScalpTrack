@@ -23,11 +23,14 @@ ROOT = Path(__file__).resolve().parents[1]
 def main(argv=None) -> int:
     if sys.platform == "win32":  # pyzmq needs a selector loop on Windows; avoids a noisy warning
         import asyncio
+
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("prefixes", nargs="*")
     ap.add_argument("--timeout", type=int, default=1800, help="per-cell timeout in seconds")
-    ap.add_argument("--output-dir", type=Path, help="write executed copies here instead of overwriting notebooks/")
+    ap.add_argument(
+        "--output-dir", type=Path, help="write executed copies here instead of overwriting notebooks/"
+    )
     args = ap.parse_args(argv)
     os.environ["SCALPTRACK_HEADLESS"] = "1"  # inherited by kernels: skips interactive widgets
     books = sorted((ROOT / "notebooks").glob("[0-9][0-9]_*.ipynb"))
@@ -37,8 +40,12 @@ def main(argv=None) -> int:
     for nb_path in books:
         nb = nbformat.read(nb_path, as_version=4)
         t0 = time.perf_counter()
-        client = NotebookClient(nb, timeout=args.timeout, kernel_name="python3",
-                                resources={"metadata": {"path": str(nb_path.parent)}})
+        client = NotebookClient(
+            nb,
+            timeout=args.timeout,
+            kernel_name="python3",
+            resources={"metadata": {"path": str(nb_path.parent)}},
+        )
         try:
             client.execute()
             status = "ok"

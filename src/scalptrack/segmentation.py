@@ -11,7 +11,6 @@ import numpy as np
 
 from .preprocessing import to_gray, to_hsv
 
-
 # --------------------------------------------------------------------------- thresholds
 
 
@@ -33,7 +32,9 @@ def threshold_otsu(gray: np.ndarray, inverse: bool = True) -> tuple[np.ndarray, 
     return m > 0, float(t)
 
 
-def threshold_adaptive(gray: np.ndarray, method: str, block_size: int, c: float, inverse: bool = True) -> np.ndarray:
+def threshold_adaptive(
+    gray: np.ndarray, method: str, block_size: int, c: float, inverse: bool = True
+) -> np.ndarray:
     """Adaptive mean or Gaussian threshold (``block_size`` odd and > 1)."""
     _check_gray(gray)
     if block_size <= 1 or block_size % 2 == 0:
@@ -66,11 +67,17 @@ def compare_thresholds(gray: np.ndarray, config: dict, inverse: bool = True) -> 
             name = f"adaptive_{method}_{bs}"
             masks[name] = threshold_adaptive(gray, method, bs, s["adaptive_c"], inverse)
             params[name] = {"block_size": bs, "C": s["adaptive_c"], "inverse": inverse}
-    return {"masks": masks, "params": params, "skipped_block_sizes": sorted(set(skipped)),
-            "foreground_fraction": {k: float(v.mean()) for k, v in masks.items()}}
+    return {
+        "masks": masks,
+        "params": params,
+        "skipped_block_sizes": sorted(set(skipped)),
+        "foreground_fraction": {k: float(v.mean()) for k, v in masks.items()},
+    }
 
 
-def adaptive_sweep(gray: np.ndarray, block_sizes, c_values, method: str = "gaussian", inverse: bool = True) -> list[dict]:
+def adaptive_sweep(
+    gray: np.ndarray, block_sizes, c_values, method: str = "gaussian", inverse: bool = True
+) -> list[dict]:
     """Foreground fraction for each (block size, C) pair - a development-only sensitivity sweep."""
     rows = []
     for bs in block_sizes:
@@ -97,6 +104,7 @@ def remove_small_components(mask: np.ndarray, min_area: int, connectivity: int =
 
 
 def filter_components_by_area(mask: np.ndarray, min_area: int, max_area: int) -> np.ndarray:
+    """Keep only connected components whose area lies in ``[min_area, max_area]``."""
     m = mask.astype(np.uint8)
     if not m.any():
         return mask.astype(bool)
@@ -107,7 +115,9 @@ def filter_components_by_area(mask: np.ndarray, min_area: int, max_area: int) ->
     return keep[labels]
 
 
-def cleanup_mask(mask: np.ndarray, open_kernel: int = 0, close_kernel: int = 3, min_area: int = 30) -> np.ndarray:
+def cleanup_mask(
+    mask: np.ndarray, open_kernel: int = 0, close_kernel: int = 3, min_area: int = 30
+) -> np.ndarray:
     """Conservative cleanup: optional opening, small closing, then small-component removal.
 
     Opening is off by default because a 3x3 opening deletes 1-2 px wide shafts.
@@ -116,9 +126,13 @@ def cleanup_mask(mask: np.ndarray, open_kernel: int = 0, close_kernel: int = 3, 
     """
     m = mask.astype(np.uint8)
     if open_kernel and open_kernel > 1:
-        m = cv2.morphologyEx(m, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (open_kernel, open_kernel)))
+        m = cv2.morphologyEx(
+            m, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (open_kernel, open_kernel))
+        )
     if close_kernel and close_kernel > 1:
-        m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (close_kernel, close_kernel)))
+        m = cv2.morphologyEx(
+            m, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (close_kernel, close_kernel))
+        )
     return remove_small_components(m > 0, min_area)
 
 
@@ -153,12 +167,20 @@ def hair_candidate_mask(gray: np.ndarray, config: dict) -> tuple[np.ndarray, np.
     else:
         raise ValueError(f"Unknown hair_method '{method}'")
     clean = cleanup_mask(raw, s["open_kernel"], s["close_kernel"], s["min_component_area"])
-    params.update({"open_kernel": s["open_kernel"], "close_kernel": s["close_kernel"],
-                   "min_component_area": s["min_component_area"], "inverse": True})
+    params.update(
+        {
+            "open_kernel": s["open_kernel"],
+            "close_kernel": s["close_kernel"],
+            "min_component_area": s["min_component_area"],
+            "inverse": True,
+        }
+    )
     return raw, clean, params
 
 
-def flake_candidate_mask(rgb: np.ndarray, config: dict, exclude: np.ndarray | None = None) -> tuple[np.ndarray, dict]:
+def flake_candidate_mask(
+    rgb: np.ndarray, config: dict, exclude: np.ndarray | None = None
+) -> tuple[np.ndarray, dict]:
     """Bright, locally prominent, low-saturation blobs with size limits.
 
     Bright glare and pale skin pass this test too; that failure is shown in notebook 02.
@@ -172,9 +194,13 @@ def flake_candidate_mask(rgb: np.ndarray, config: dict, exclude: np.ndarray | No
     if exclude is not None:
         bright &= ~exclude
     mask = filter_components_by_area(bright, s["flake_min_area"], s["flake_max_area"])
-    return mask, {"percentile": s["flake_bright_percentile"], "intensity_level": level,
-                  "local_contrast_min": 10.0, "max_saturation": s["flake_max_saturation"],
-                  "area_range": [s["flake_min_area"], s["flake_max_area"]]}
+    return mask, {
+        "percentile": s["flake_bright_percentile"],
+        "intensity_level": level,
+        "local_contrast_min": 10.0,
+        "max_saturation": s["flake_max_saturation"],
+        "area_range": [s["flake_min_area"], s["flake_max_area"]],
+    }
 
 
 def segment_candidates(rgb_roi: np.ndarray, config: dict, valid_mask: np.ndarray | None = None) -> dict:
@@ -200,15 +226,21 @@ def segment_candidates(rgb_roi: np.ndarray, config: dict, valid_mask: np.ndarray
         "flake": flake,
         "scalp": scalp,
         "unknown": unknown,
-        "params": {"hair": hair_params, "flake": flake_params,
-                   "unknown": {"shadow_v_max": config["segmentation"]["shadow_v_max"],
-                               "glare_v_min": config["segmentation"]["glare_v_min"],
-                               "glare_s_max": config["segmentation"]["glare_s_max"]}},
+        "params": {
+            "hair": hair_params,
+            "flake": flake_params,
+            "unknown": {
+                "shadow_v_max": config["segmentation"]["shadow_v_max"],
+                "glare_v_min": config["segmentation"]["glare_v_min"],
+                "glare_s_max": config["segmentation"]["glare_s_max"],
+            },
+        },
     }
 
 
-def coverage_descriptors(hair: np.ndarray, scalp: np.ndarray, flake: np.ndarray | None = None,
-                         valid: np.ndarray | None = None) -> dict:
+def coverage_descriptors(
+    hair: np.ndarray, scalp: np.ndarray, flake: np.ndarray | None = None, valid: np.ndarray | None = None
+) -> dict:
     """Pixel-area descriptors from disjoint candidate masks (Section 8.6).
 
     Each value is ``None`` when its denominator is empty. These are *not* hairs/cm^2
@@ -244,6 +276,7 @@ def overlay_mask(rgb: np.ndarray, mask: np.ndarray, color=(255, 0, 0), alpha: fl
 
 
 def label_overlay(rgb: np.ndarray, masks: dict[str, np.ndarray], colors: dict[str, tuple]) -> np.ndarray:
+    """Overlay several named masks, each in its own colour (display only)."""
     out = rgb.copy()
     for name, m in masks.items():
         out = overlay_mask(out, m, colors[name], 0.55)

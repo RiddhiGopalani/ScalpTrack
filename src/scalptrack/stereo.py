@@ -54,8 +54,9 @@ def validate_calibration(calib: dict | None) -> list[str]:
     return problems
 
 
-def validate_stereo_inputs(left: np.ndarray | None, right: np.ndarray | None, pair_meta: dict | None,
-                           calib: dict | None) -> dict:
+def validate_stereo_inputs(
+    left: np.ndarray | None, right: np.ndarray | None, pair_meta: dict | None, calib: dict | None
+) -> dict:
     """Apply the real-data gate (spec Section 12.1). Returns status and every failed check."""
     reasons: list[str] = []
     if left is None or right is None:
@@ -72,41 +73,67 @@ def validate_stereo_inputs(left: np.ndarray | None, right: np.ndarray | None, pa
         if np.array_equal(left, right):
             reasons.append("left and right images are identical")
     ok = not reasons
-    return {"status": str(Status.OK if ok else Status.UNAVAILABLE),
-            "reason": "inputs pass the stereo gate" if ok else "; ".join(reasons), "failed_checks": reasons}
+    return {
+        "status": str(Status.OK if ok else Status.UNAVAILABLE),
+        "reason": "inputs pass the stereo gate" if ok else "; ".join(reasons),
+        "failed_checks": reasons,
+    }
 
 
 # --------------------------------------------------------------------------- geometry
 
 
-def q_matrix_rectified(focal_px: float, cx: float, cy: float, baseline: float, cx_right: float | None = None) -> np.ndarray:
+def q_matrix_rectified(
+    focal_px: float, cx: float, cy: float, baseline: float, cx_right: float | None = None
+) -> np.ndarray:
     """Q for an already-rectified horizontal pair (OpenCV convention, right camera at +X = baseline).
 
     ``reprojectImageTo3D`` gives Z = f * B / (d - (cx - cx_right)).
     """
     cx_right = cx if cx_right is None else cx_right
-    return np.array([[1, 0, 0, -cx],
-                     [0, 1, 0, -cy],
-                     [0, 0, 0, focal_px],
-                     [0, 0, 1.0 / baseline, -(cx - cx_right) / baseline]], dtype=np.float64)
+    return np.array(
+        [
+            [1, 0, 0, -cx],
+            [0, 1, 0, -cy],
+            [0, 0, 0, focal_px],
+            [0, 0, 1.0 / baseline, -(cx - cx_right) / baseline],
+        ],
+        dtype=np.float64,
+    )
 
 
 def rectify_pair(left: np.ndarray, right: np.ndarray, calib: dict) -> dict:
     """Rectify a real calibrated pair with ``cv2.stereoRectify`` + remap; returns images and Q."""
     h, w = left.shape[:2]
     R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(
-        calib["K1"], calib["D1"], calib["K2"], calib["D2"], (w, h), calib["R"], calib["T"],
-        flags=cv2.CALIB_ZERO_DISPARITY, alpha=0)
+        calib["K1"],
+        calib["D1"],
+        calib["K2"],
+        calib["D2"],
+        (w, h),
+        calib["R"],
+        calib["T"],
+        flags=cv2.CALIB_ZERO_DISPARITY,
+        alpha=0,
+    )
     m1 = cv2.initUndistortRectifyMap(calib["K1"], calib["D1"], R1, P1, (w, h), cv2.CV_32FC1)
     m2 = cv2.initUndistortRectifyMap(calib["K2"], calib["D2"], R2, P2, (w, h), cv2.CV_32FC1)
-    return {"left": cv2.remap(left, *m1, cv2.INTER_LINEAR), "right": cv2.remap(right, *m2, cv2.INTER_LINEAR),
-            "Q": Q, "P1": P1, "P2": P2, "valid_roi_left": roi1, "valid_roi_right": roi2}
+    return {
+        "left": cv2.remap(left, *m1, cv2.INTER_LINEAR),
+        "right": cv2.remap(right, *m2, cv2.INTER_LINEAR),
+        "Q": Q,
+        "P1": P1,
+        "P2": P2,
+        "valid_roi_left": roi1,
+        "valid_roi_right": roi2,
+    }
 
 
 # --------------------------------------------------------------------------- matching
 
 
 def make_sgbm(config: dict, min_disparity: int = 0):
+    """Configured ``StereoSGBM`` matcher (validates numDisparities and block size)."""
     s = config["stereo"]
     nd, bs = int(s["num_disparities"]), int(s["block_size"])
     if nd <= 0 or nd % 16:
@@ -114,10 +141,17 @@ def make_sgbm(config: dict, min_disparity: int = 0):
     if bs < 1 or bs % 2 == 0:
         raise ValueError(f"block_size must be odd, got {bs}")
     return cv2.StereoSGBM_create(
-        minDisparity=min_disparity, numDisparities=nd, blockSize=bs,
-        P1=8 * bs * bs, P2=32 * bs * bs, disp12MaxDiff=int(s["disp12_max_diff"]),
-        uniquenessRatio=int(s["uniqueness_ratio"]), speckleWindowSize=int(s["speckle_window_size"]),
-        speckleRange=int(s["speckle_range"]), mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY)
+        minDisparity=min_disparity,
+        numDisparities=nd,
+        blockSize=bs,
+        P1=8 * bs * bs,
+        P2=32 * bs * bs,
+        disp12MaxDiff=int(s["disp12_max_diff"]),
+        uniquenessRatio=int(s["uniqueness_ratio"]),
+        speckleWindowSize=int(s["speckle_window_size"]),
+        speckleRange=int(s["speckle_range"]),
+        mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY,
+    )
 
 
 def _gray(img: np.ndarray) -> np.ndarray:
@@ -131,7 +165,9 @@ def disparity_sgbm(left_gray: np.ndarray, right_gray: np.ndarray, config: dict) 
     return raw
 
 
-def disparity_bm(left_gray: np.ndarray, right_gray: np.ndarray, config: dict, block_size: int = 15) -> np.ndarray:
+def disparity_bm(
+    left_gray: np.ndarray, right_gray: np.ndarray, config: dict, block_size: int = 15
+) -> np.ndarray:
     """StereoBM comparison (block matching without the semi-global smoothness term)."""
     bm = cv2.StereoBM_create(numDisparities=int(config["stereo"]["num_disparities"]), blockSize=block_size)
     raw = bm.compute(left_gray, right_gray).astype(np.float32) / 16.0
@@ -141,7 +177,9 @@ def disparity_bm(left_gray: np.ndarray, right_gray: np.ndarray, config: dict, bl
 
 def right_view_disparity(left_gray: np.ndarray, right_gray: np.ndarray, config: dict) -> np.ndarray:
     """Disparity referenced to the right image, via the horizontal-flip trick (no ximgproc needed)."""
-    d = disparity_sgbm(np.ascontiguousarray(right_gray[:, ::-1]), np.ascontiguousarray(left_gray[:, ::-1]), config)
+    d = disparity_sgbm(
+        np.ascontiguousarray(right_gray[:, ::-1]), np.ascontiguousarray(left_gray[:, ::-1]), config
+    )
     return np.ascontiguousarray(d[:, ::-1])
 
 
@@ -158,8 +196,14 @@ def left_right_consistency(disp_left: np.ndarray, disp_right: np.ndarray, tol: f
         return inb & np.isfinite(dr) & (np.abs(disp_left - dr) <= tol)
 
 
-def compute_stereo(left: np.ndarray, right: np.ndarray, calibration: dict | None, config: dict,
-                   pair_meta: dict | None = None, already_rectified: bool = False) -> dict:
+def compute_stereo(
+    left: np.ndarray,
+    right: np.ndarray,
+    calibration: dict | None,
+    config: dict,
+    pair_meta: dict | None = None,
+    already_rectified: bool = False,
+) -> dict:
     """Disparity, validity masks and (when calibrated) depth / point cloud for a stereo pair.
 
     Returns float arrays (NaN = invalid) kept separate from any display image.
@@ -174,7 +218,13 @@ def compute_stereo(left: np.ndarray, right: np.ndarray, calibration: dict | None
         left, right, Q = rect["left"], rect["right"], rect["Q"]
     elif calib_ok:
         K = np.asarray(calibration["K1"])
-        Q = q_matrix_rectified(K[0, 0], K[0, 2], K[1, 2], float(np.linalg.norm(calibration["T"])), np.asarray(calibration["K2"])[0, 2])
+        Q = q_matrix_rectified(
+            K[0, 0],
+            K[0, 2],
+            K[1, 2],
+            float(np.linalg.norm(calibration["T"])),
+            np.asarray(calibration["K2"])[0, 2],
+        )
     else:
         Q = None
     lg, rg = _gray(left), _gray(right)
@@ -191,29 +241,62 @@ def compute_stereo(left: np.ndarray, right: np.ndarray, calibration: dict | None
     valid = matched & lr_ok & ~border
 
     out = {
-        "disparity_px": disp, "disparity_right_px": disp_r, "matched": matched, "lr_consistent": lr_ok,
-        "border": border, "valid": valid, "Q": Q, "gate": gate,
-        "params": {k: s[k] for k in ("num_disparities", "block_size", "uniqueness_ratio", "speckle_window_size",
-                                     "speckle_range", "disp12_max_diff", "lr_check_tolerance_px", "border_px")},
+        "disparity_px": disp,
+        "disparity_right_px": disp_r,
+        "matched": matched,
+        "lr_consistent": lr_ok,
+        "border": border,
+        "valid": valid,
+        "Q": Q,
+        "gate": gate,
+        "params": {
+            k: s[k]
+            for k in (
+                "num_disparities",
+                "block_size",
+                "uniqueness_ratio",
+                "speckle_window_size",
+                "speckle_range",
+                "disp12_max_diff",
+                "lr_check_tolerance_px",
+                "border_px",
+            )
+        },
         "valid_fraction": float(valid.mean()),
     }
     if Q is None:
-        out.update(depth=None, points=None, depth_unit=None, status=str(Status.UNAVAILABLE),
-                   reason="Disparity computed, but no calibration: metric depth is unavailable. " + gate["reason"])
+        out.update(
+            depth=None,
+            points=None,
+            depth_unit=None,
+            status=str(Status.UNAVAILABLE),
+            reason="Disparity computed, but no calibration: metric depth is unavailable. " + gate["reason"],
+        )
         return out
     pts = cv2.reprojectImageTo3D(np.nan_to_num(disp, nan=0.0).astype(np.float32), Q)
     pts[~valid] = np.nan
-    out.update(depth=pts[..., 2].astype(np.float64), points=pts, depth_unit=calibration.get("units"),
-               status=str(Status.SYNTHETIC_DEMO if (pair_meta or {}).get("provenance") == "synthetic" else Status.OK),
-               reason="Depth from calibrated Q matrix over valid pixels")
+    out.update(
+        depth=pts[..., 2].astype(np.float64),
+        points=pts,
+        depth_unit=calibration.get("units"),
+        status=str(
+            Status.SYNTHETIC_DEMO if (pair_meta or {}).get("provenance") == "synthetic" else Status.OK
+        ),
+        reason="Depth from calibrated Q matrix over valid pixels",
+    )
     return out
 
 
 # --------------------------------------------------------------------------- evaluation
 
 
-def evaluate_against_truth(result: dict, gt_disp: np.ndarray, gt_depth: np.ndarray, visible: np.ndarray,
-                           error_threshold_px: float = 1.0) -> dict:
+def evaluate_against_truth(
+    result: dict,
+    gt_disp: np.ndarray,
+    gt_depth: np.ndarray,
+    visible: np.ndarray,
+    error_threshold_px: float = 1.0,
+) -> dict:
     """Coverage and error together over the ground-truth-visible evaluation region (excluding borders)."""
     region = visible & ~result["border"]
     valid = result["valid"] & region
@@ -224,7 +307,9 @@ def evaluate_against_truth(result: dict, gt_disp: np.ndarray, gt_depth: np.ndarr
         "eval_region_px": n_region,
         "valid_coverage": float(valid.sum() / n_region) if n_region else None,
         "disparity_mae_px": float(np.nanmean(err[valid])) if valid.any() else None,
-        f"pct_error_gt_{error_threshold_px:g}px": float(100.0 * np.mean(err[valid] > error_threshold_px)) if valid.any() else None,
+        f"pct_error_gt_{error_threshold_px:g}px": float(100.0 * np.mean(err[valid] > error_threshold_px))
+        if valid.any()
+        else None,
         "occluded_fraction": float((~visible).mean()),
         "invalid_fraction_in_region": float(1.0 - valid.sum() / n_region) if n_region else None,
     }
@@ -234,7 +319,9 @@ def evaluate_against_truth(result: dict, gt_disp: np.ndarray, gt_depth: np.ndarr
     return out
 
 
-def sparse_point_cloud(points: np.ndarray, valid: np.ndarray, step: int = 6, max_points: int = 6000, seed: int = 0) -> np.ndarray:
+def sparse_point_cloud(
+    points: np.ndarray, valid: np.ndarray, step: int = 6, max_points: int = 6000, seed: int = 0
+) -> np.ndarray:
     """Subsampled Nx3 array of valid 3-D points for plotting."""
     sub = np.zeros_like(valid)
     sub[::step, ::step] = True

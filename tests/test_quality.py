@@ -12,7 +12,9 @@ def test_sharp_image_eligible(cfg, hair_rgb):
 
 def test_blur_lowers_laplacian_variance_and_flags(cfg, hair_rgb):
     blurred = cv2.GaussianBlur(hair_rgb, (0, 0), 6)
-    assert laplacian_variance(cv2.cvtColor(blurred, cv2.COLOR_RGB2GRAY)) < laplacian_variance(cv2.cvtColor(hair_rgb, cv2.COLOR_RGB2GRAY))
+    assert laplacian_variance(cv2.cvtColor(blurred, cv2.COLOR_RGB2GRAY)) < laplacian_variance(
+        cv2.cvtColor(hair_rgb, cv2.COLOR_RGB2GRAY)
+    )
     q = assess_quality(blurred, cfg)
     assert "possible_blur" in q["flags"] and not q["measurement_eligible"]
 

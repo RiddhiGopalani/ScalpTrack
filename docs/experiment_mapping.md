@@ -70,7 +70,8 @@ classification, **C** = measurement, stereo, face and integration.
 
 ## Deviations from the spec's proposed layout (Section 18.1)
 
-* `detailed_spec.md` is not duplicated. The original `fcv_miniProj.pdf` is kept as the specification.
+* `detailed_spec.md` is not duplicated. The specification is the course PDF `fcv_miniProj.pdf`, which is not
+  stored in this repository.
 * Notebook sources live in `scripts/nbbuild/`. `python scripts/build_notebooks.py` regenerates
   `notebooks/*.ipynb`, and `python scripts/run_notebooks.py` executes them.
 * Real and synthetic outputs are separated as `outputs/figures/<notebook>/{real,synthetic}/`, with

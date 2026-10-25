@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from scalptrack import edges, segmentation as sg
+from scalptrack import edges
+from scalptrack import segmentation as sg
 from scalptrack import synthetic as syn
 from scalptrack.preprocessing import to_gray
 
@@ -10,7 +11,9 @@ def test_four_threshold_methods_present(cfg, hair_rgb):
     res = sg.compare_thresholds(to_gray(hair_rgb), cfg)
     names = set(res["masks"])
     assert {"fixed", "otsu"} <= names
-    assert any(n.startswith("adaptive_mean") for n in names) and any(n.startswith("adaptive_gaussian") for n in names)
+    assert any(n.startswith("adaptive_mean") for n in names) and any(
+        n.startswith("adaptive_gaussian") for n in names
+    )
     for m in res["masks"].values():
         assert m.dtype == bool and m.shape == hair_rgb.shape[:2]
     assert res["params"]["otsu"]["threshold"] > 0
@@ -73,7 +76,9 @@ def test_coverage_descriptors_and_unavailable():
     h[:, :2] = True
     s = ~h
     cov = sg.coverage_descriptors(h, s, np.zeros_like(h))
-    assert cov["hair_coverage_fraction"] == pytest.approx(0.2) and cov["scalp_to_hair_area_ratio"] == pytest.approx(4.0)
+    assert cov["hair_coverage_fraction"] == pytest.approx(0.2) and cov[
+        "scalp_to_hair_area_ratio"
+    ] == pytest.approx(4.0)
     assert cov["flake_candidate_coverage"] == 0.0  # valid measurement that found none
     none = sg.coverage_descriptors(np.zeros_like(h), np.zeros_like(h))
     assert none["visible_scalp_fraction"] is None and none["scalp_to_hair_area_ratio"] is None

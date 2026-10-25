@@ -15,7 +15,7 @@ def test_color_conversions_shapes_and_conventions():
     blue[..., 2] = 255
     assert pp.hue_degrees(pp.to_hsv(blue))[0, 0] == pytest.approx(240.0)
     labf = pp.to_lab_float(rgb)
-    assert labf.dtype == np.float32 and labf[0, 0, 1] > 50          # red has strongly positive a*
+    assert labf.dtype == np.float32 and labf[0, 0, 1] > 50  # red has strongly positive a*
     lab8 = pp.to_lab_uint8(rgb)
     np.testing.assert_allclose(pp.lab_uint8_to_signed(lab8)[0, 0], labf[0, 0], atol=1.5)
     assert pp.to_gray(rgb).shape == (4, 4)

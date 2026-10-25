@@ -33,8 +33,10 @@ def main(argv=None) -> int:
                 elif o.output_type in ("display_data", "execute_result") and "image/png" in o.get("data", {}):
                     images += 1
         bad += bool(errors)
-        print(f"{p.name:34s} cells={len(nb.cells):3d} code={len(code):3d} executed={executed:3d} "
-              f"figures={images:3d} errors={len(errors)} stderr={len(stderr)}")
+        print(
+            f"{p.name:34s} cells={len(nb.cells):3d} code={len(code):3d} executed={executed:3d} "
+            f"figures={images:3d} errors={len(errors)} stderr={len(stderr)}"
+        )
         for e in errors:
             print("   ERROR", e)
         if args.verbose:

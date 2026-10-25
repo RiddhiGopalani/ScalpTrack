@@ -2,8 +2,17 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from scalptrack.io_utils import (ImageLoadError, ROIError, compare_resize_methods, crop_roi, describe_array, load_image,
-                                 pixel_neighbourhood, resize_with_record, validate_roi)
+from scalptrack.io_utils import (
+    ImageLoadError,
+    ROIError,
+    compare_resize_methods,
+    crop_roi,
+    describe_array,
+    load_image,
+    pixel_neighbourhood,
+    resize_with_record,
+    validate_roi,
+)
 
 
 def test_load_png_returns_rgb_uint8(png_path, hair_rgb):
@@ -38,12 +47,15 @@ def test_exif_orientation_applied(tmp_path):
     assert rec.rgb.shape[:2] == (40, 20) and rec.exif_transposed
 
 
-@pytest.mark.parametrize("name,content,msg", [
-    ("missing.png", None, "does not exist"),
-    ("bad.gif", b"GIF89a", "Unsupported extension"),
-    ("empty.png", b"", "Empty file"),
-    ("corrupt.jpg", b"\xff\xd8\xff garbage", "Corrupt or unreadable"),
-])
+@pytest.mark.parametrize(
+    "name,content,msg",
+    [
+        ("missing.png", None, "does not exist"),
+        ("bad.gif", b"GIF89a", "Unsupported extension"),
+        ("empty.png", b"", "Empty file"),
+        ("corrupt.jpg", b"\xff\xd8\xff garbage", "Corrupt or unreadable"),
+    ],
+)
 def test_invalid_inputs_raise(tmp_path, name, content, msg):
     p = tmp_path / name
     if content is not None:
@@ -74,9 +86,9 @@ def test_validate_roi_rules():
     assert validate_roi((100, 200, 3), None) == (0, 0, 200, 100)
     assert validate_roi((100, 200), (10, 20, 30, 40)) == (10, 20, 30, 40)
     with pytest.raises(ROIError):
-        validate_roi((100, 200), (0, 0, 201, 10))      # outside (max exclusive)
+        validate_roi((100, 200), (0, 0, 201, 10))  # outside (max exclusive)
     with pytest.raises(ROIError):
-        validate_roi((100, 200), (10, 10, 10, 20))     # empty
+        validate_roi((100, 200), (10, 10, 10, 20))  # empty
     with pytest.raises(ROIError):
         validate_roi((100, 200), (-1, 0, 5, 5))
     with pytest.raises(ROIError):

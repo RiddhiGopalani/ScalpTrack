@@ -1,10 +1,10 @@
 # ScalpTrack capability status
 
-Generated 2026-10-25T04:49:00 by `scripts/generate_report.py` from files on disk.
+Generated 2026-10-25T21:05:01 by `scripts/generate_report.py` from files on disk.
 
 ## Automated tests
 
-`pytest`: **147 passed in 22.30s** (exit code 0)
+`pytest`: **151 passed in 31.17s** (exit code 0)
 
 ## Notebooks
 

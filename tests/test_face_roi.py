@@ -1,14 +1,34 @@
-import numpy as np
 from pathlib import Path
+
+import cv2
+import numpy as np
+import pytest
 
 from scalptrack import face_roi
 
 
-
 def test_load_cascade_accepts_explicit_path():
-    path = Path(__import__("cv2").data.haarcascades) / face_roi.DEFAULT_CASCADE
+    path = Path(cv2.data.haarcascades) / face_roi.DEFAULT_CASCADE
     cascade = face_roi.load_cascade(str(path))
     assert not cascade.empty()
+
+
+def test_load_cascade_from_config_uses_opencv_default(cfg):
+    assert cfg["face"]["cascade_path"] is None
+    assert not face_roi.load_cascade_from_config(cfg).empty()
+
+
+def test_load_cascade_reports_where_it_searched(tmp_path):
+    with pytest.raises(face_roi.CascadeLoadError, match="searched"):
+        face_roi.load_cascade("no_such_cascade.xml", search_roots=(tmp_path,))
+
+
+def test_unparseable_cascade_file_is_an_error(tmp_path):
+    (tmp_path / "broken.xml").write_text("not a cascade")
+    with pytest.raises(face_roi.CascadeLoadError, match="failed to load"):
+        face_roi.load_cascade("broken.xml", search_roots=(tmp_path,))
+
+
 def test_haar_no_face_path(cfg):
     cascade = face_roi.load_cascade()
     img = (np.random.default_rng(0).random((200, 200, 3)) * 255).astype(np.uint8)

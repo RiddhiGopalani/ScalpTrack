@@ -30,9 +30,13 @@ def test_q_matrix_gives_z_equals_fb_over_d():
 
 
 def test_synthetic_disparity_accuracy(cfg, scene):
-    res = stereo.compute_stereo(scene["left"], scene["right"], scene["calibration"], cfg, pair_meta=_meta(scene))
+    res = stereo.compute_stereo(
+        scene["left"], scene["right"], scene["calibration"], cfg, pair_meta=_meta(scene)
+    )
     assert res["status"] == "synthetic_demo" and res["depth_unit"] == "mm"
-    ev = stereo.evaluate_against_truth(res, scene["gt_disparity_px"], scene["gt_depth"], scene["visible_in_right"])
+    ev = stereo.evaluate_against_truth(
+        res, scene["gt_disparity_px"], scene["gt_depth"], scene["visible_in_right"]
+    )
     assert ev["valid_coverage"] > 0.6
     assert ev["disparity_mae_px"] < 0.5
     assert ev["depth_mae"] < 25.0
@@ -48,8 +52,12 @@ def test_no_calibration_gives_disparity_but_no_depth(cfg, scene):
 def test_gate_rejects_single_and_identical_images(cfg, scene):
     g = stereo.validate_stereo_inputs(scene["left"], None, None, None)
     assert g["status"] == "unavailable" and any("two images" in r for r in g["failed_checks"])
-    g2 = stereo.validate_stereo_inputs(scene["left"], scene["left"], {"pair_id": "x", "same_static_region_confirmed": True},
-                                       scene["calibration"])
+    g2 = stereo.validate_stereo_inputs(
+        scene["left"],
+        scene["left"],
+        {"pair_id": "x", "same_static_region_confirmed": True},
+        scene["calibration"],
+    )
     assert any("identical" in r for r in g2["failed_checks"])
     res = stereo.compute_stereo(scene["left"], None, None, cfg)
     assert res["status"] == "unavailable"
@@ -57,7 +65,15 @@ def test_gate_rejects_single_and_identical_images(cfg, scene):
 
 def test_calibration_validation():
     assert stereo.validate_calibration(None) == ["no calibration supplied"]
-    bad = {"K1": np.eye(3), "D1": np.zeros(5), "K2": np.eye(2), "D2": np.zeros(5), "R": np.eye(3), "T": np.zeros(3), "units": "mm"}
+    bad = {
+        "K1": np.eye(3),
+        "D1": np.zeros(5),
+        "K2": np.eye(2),
+        "D2": np.zeros(5),
+        "R": np.eye(3),
+        "T": np.zeros(3),
+        "units": "mm",
+    }
     probs = stereo.validate_calibration(bad)
     assert "K2 must be 3x3" in probs and "baseline |T| is zero" in probs
 

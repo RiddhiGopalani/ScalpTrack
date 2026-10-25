@@ -38,13 +38,16 @@ def build():
         BUNDLE = None
         for path in (real_model, syn_model):
             try:
-                BUNDLE = clf.load_bundle(path); break
+                BUNDLE = clf.load_bundle(path)
+                break
             except clf.ModelMissingError as exc:
                 print("model not found:", rel(path))
         if BUNDLE is None:
             print("No model bundle: classification will be reported as unavailable. Train with notebook 05.")
         else:
-            print(f"loaded {BUNDLE['model_id']} | provenance={BUNDLE['data_provenance']} | classes={BUNDLE['classes']}")
+            print(
+                f"loaded {BUNDLE['model_id']} | provenance={BUNDLE['data_provenance']} | classes={BUNDLE['classes']}"
+            )
             if BUNDLE["data_provenance"] == "synthetic":
                 print("*** This bundle was trained on SYNTHETIC fixtures: its labels are NOT scalp conditions. ***")
     """))
@@ -87,28 +90,80 @@ def build():
     """))
     c.append(code("""
         record = json.loads(Path(PATHS["json"]).read_text(encoding="utf-8"))
-        print(json.dumps({k: record[k] for k in ("schema_version", "image_id", "roi_xyxy", "input_hash", "run_config_id", "quality",
-                                                 "classification", "hair_count", "shaft_width", "stereo")}, indent=2)[:4000])
+        print(
+            json.dumps(
+                {
+                    k: record[k]
+                    for k in (
+                        "schema_version",
+                        "image_id",
+                        "roi_xyxy",
+                        "input_hash",
+                        "run_config_id",
+                        "quality",
+                        "classification",
+                        "hair_count",
+                        "shaft_width",
+                        "stereo",
+                    )
+                },
+                indent=2,
+            )[:4000]
+        )
     """))
     c.append(md("## 4. Technique gallery on the same ROI (Labs 1–7)"))
     c.append(code("""
-        roi = RESULT["_arrays"]["roi_rgb"]; gray = pp.to_gray(roi)
+        roi = RESULT["_arrays"]["roi_rgb"]
+        gray = pp.to_gray(roi)
         filt = pp.compare_filters(gray, cfg)
         ed = edges.compare_edges(gray, cfg)
         thr = sg.compare_thresholds(gray, cfg)
         lp = pyramids.laplacian_pyramid(pyramids.gaussian_pyramid(gray, 4, 16))
-        lab = pp.to_lab_float(roi); hsv = pp.to_hsv(roi)
-        panels = [roi, gray, filt["gaussian_5x5_s1.0"], pp.to_display_uint8(filt[next(k for k in filt if k.startswith("sharpened"))]),
-                  hsv[..., 1], lab[..., 1], ed["sobel"]["magnitude"], ed["binary_maps"]["canny_50_150"],
-                  thr["masks"]["otsu"], thr["masks"][next(k for k in thr["masks"] if k.startswith("adaptive_gaussian"))], lp[0], lp[2]]
-        titles = ["ROI (Lab 1)", "grayscale (Lab 1/4)", "Gaussian 5x5 (Lab 2)", "Laplacian-sharpened (Lab 2)", "HSV S (Lab 4)",
-                  "LAB a* signed (Lab 4)", "Sobel |g| (Lab 3)", "Canny 50/150 (Lab 3)", "Otsu (Lab 5)", "adaptive Gaussian (Lab 5)",
-                  "Laplacian L0 (Lab 7)", "Laplacian L2 (Lab 7)"]
-        fig = show_grid(panels, titles, ncols=6, size=2.7, signed={10, 11}, cmap="gray",
-                        suptitle=f"Technique gallery - {RESULT['image_id']} [{PROVENANCE}]")
-        save_fig(fig, "technique_gallery", PROVENANCE); plt.show()
+        lab = pp.to_lab_float(roi)
+        hsv = pp.to_hsv(roi)
+        panels = [
+            roi,
+            gray,
+            filt["gaussian_5x5_s1.0"],
+            pp.to_display_uint8(filt[next(k for k in filt if k.startswith("sharpened"))]),
+            hsv[..., 1],
+            lab[..., 1],
+            ed["sobel"]["magnitude"],
+            ed["binary_maps"]["canny_50_150"],
+            thr["masks"]["otsu"],
+            thr["masks"][next(k for k in thr["masks"] if k.startswith("adaptive_gaussian"))],
+            lp[0],
+            lp[2],
+        ]
+        titles = [
+            "ROI (Lab 1)",
+            "grayscale (Lab 1/4)",
+            "Gaussian 5x5 (Lab 2)",
+            "Laplacian-sharpened (Lab 2)",
+            "HSV S (Lab 4)",
+            "LAB a* signed (Lab 4)",
+            "Sobel |g| (Lab 3)",
+            "Canny 50/150 (Lab 3)",
+            "Otsu (Lab 5)",
+            "adaptive Gaussian (Lab 5)",
+            "Laplacian L0 (Lab 7)",
+            "Laplacian L2 (Lab 7)",
+        ]
+        fig = show_grid(
+            panels,
+            titles,
+            ncols=6,
+            size=2.7,
+            signed={10, 11},
+            cmap="gray",
+            suptitle=f"Technique gallery - {RESULT['image_id']} [{PROVENANCE}]",
+        )
+        save_fig(fig, "technique_gallery", PROVENANCE)
+        plt.show()
         tf = RESULT["texture_features"]
-        pd.Series({k: tf[k] for k in tf if k.startswith(("glcm_contrast", "glcm_energy", "glcm_entropy", "hist_entropy"))}).round(4).to_frame("Lab 6 texture")
+        pd.Series(
+            {k: tf[k] for k in tf if k.startswith(("glcm_contrast", "glcm_energy", "glcm_entropy", "hist_entropy"))}
+        ).round(4).to_frame("Lab 6 texture")
     """))
     c.append(md("""
         ## 5. Robustness: inputs that must not crash the application
@@ -116,7 +171,8 @@ def build():
         structured status instead of an exception.
     """))
     c.append(code("""
-        tmp = project_path(cfg, "results", NB); tmp.mkdir(parents=True, exist_ok=True)
+        tmp = project_path(cfg, "results", NB)
+        tmp.mkdir(parents=True, exist_ok=True)
         (tmp / "corrupt.jpg").write_bytes(b"this is not a jpeg")
         (tmp / "notes.gif").write_bytes(b"GIF89a")
         cases = {
@@ -130,9 +186,17 @@ def build():
         rows = []
         for name, (src, roi_, bundle) in cases.items():
             r = analyze_image(src, roi_, bundle, cfg, provenance="synthetic", run_faces=False)
-            rows.append({"case": name, "status": r.get("status"), "error": r.get("error"),
-                         "classification": r["classification"]["status"], "crossings": r["hair_count"]["value"],
-                         "crossings_status": r["hair_count"]["status"], "quality_flags": ",".join(r["quality"]["flags"]) or "-"})
+            rows.append(
+                {
+                    "case": name,
+                    "status": r.get("status"),
+                    "error": r.get("error"),
+                    "classification": r["classification"]["status"],
+                    "crossings": r["hair_count"]["value"],
+                    "crossings_status": r["hair_count"]["status"],
+                    "quality_flags": ",".join(r["quality"]["flags"]) or "-",
+                }
+            )
         pd.DataFrame(rows)
     """))
     c.append(md("""
@@ -141,23 +205,48 @@ def build():
         passed explicitly; the figure carries the synthetic caption and filename.
     """))
     c.append(code("""
-        sc = syn.render_stereo_scene(**{k: cfg["stereo"]["synthetic"][k] for k in ("width", "height", "focal_px")},
-                                     baseline_mm=cfg["stereo"]["synthetic"]["baseline_mm"], seed=cfg["seed"])
-        pair = {"left": sc["left"], "right": sc["right"], "calibration": sc["calibration"],
-                "meta": {"pair_id": sc["pair_id"], "same_static_region_confirmed": True, "provenance": "synthetic"}}
-        st_result = analyze_image(SYN["clean"]["rgb"], None, None, cfg, provenance="synthetic", image_id="SYNTHETIC_stereo_pair",
-                                  run_faces=False, stereo_pair=pair)
+        sc = syn.render_stereo_scene(
+            **{k: cfg["stereo"]["synthetic"][k] for k in ("width", "height", "focal_px")},
+            baseline_mm=cfg["stereo"]["synthetic"]["baseline_mm"],
+            seed=cfg["seed"],
+        )
+        pair = {
+            "left": sc["left"],
+            "right": sc["right"],
+            "calibration": sc["calibration"],
+            "meta": {"pair_id": sc["pair_id"], "same_static_region_confirmed": True, "provenance": "synthetic"},
+        }
+        st_result = analyze_image(
+            SYN["clean"]["rgb"],
+            None,
+            None,
+            cfg,
+            provenance="synthetic",
+            image_id="SYNTHETIC_stereo_pair",
+            run_faces=False,
+            stereo_pair=pair,
+        )
         print(json.dumps(st_result["stereo"], indent=2))
         from scalptrack.stereo import compute_stereo
+
         s = compute_stereo(sc["left"], sc["right"], sc["calibration"], cfg, pair_meta=pair["meta"])
         fig, axes = plt.subplots(1, 4, figsize=(17, 3.6))
-        axes[0].imshow(sc["left"], cmap="gray"); axes[0].set_title("left (synthetic)")
-        axes[1].imshow(sc["right"], cmap="gray"); axes[1].set_title("right (synthetic)")
-        im = axes[2].imshow(s["disparity_px"], cmap="viridis"); axes[2].set_title("disparity (px)"); plt.colorbar(im, ax=axes[2])
-        im = axes[3].imshow(s["depth"], cmap="magma_r", vmax=1600); axes[3].set_title(f"depth ({s['depth_unit']}), valid only"); plt.colorbar(im, ax=axes[3])
-        for a in axes: a.axis("off")
+        axes[0].imshow(sc["left"], cmap="gray")
+        axes[0].set_title("left (synthetic)")
+        axes[1].imshow(sc["right"], cmap="gray")
+        axes[1].set_title("right (synthetic)")
+        im = axes[2].imshow(s["disparity_px"], cmap="viridis")
+        axes[2].set_title("disparity (px)")
+        plt.colorbar(im, ax=axes[2])
+        im = axes[3].imshow(s["depth"], cmap="magma_r", vmax=1600)
+        axes[3].set_title(f"depth ({s['depth_unit']}), valid only")
+        plt.colorbar(im, ax=axes[3])
+        for a in axes:
+            a.axis("off")
         fig.suptitle(f"pair {sc['pair_id']} | calibration {sc['calibration']['calibration_id']} | {sc['label']}")
-        plt.tight_layout(); save_fig(fig, "stereo_panel", "synthetic"); plt.show()
+        plt.tight_layout()
+        save_fig(fig, "stereo_panel", "synthetic")
+        plt.show()
     """))
     c.append(md("""
         ## 7. Optional interactive controls
@@ -166,7 +255,9 @@ def build():
     """))
     c.append(code("""
         import os
+
         roi_rgb = RESULT["_arrays"]["roi_rgb"]
+
 
         def _view(method="adaptive_gaussian", block=15, C=8, canny_low=50, canny_high=150):
             g = pp.to_gray(roi_rgb)
@@ -179,16 +270,33 @@ def build():
                 m = sg.threshold_adaptive(g, method.split("_")[1], b, C)
             e = edges.canny(g, canny_low, max(canny_high, canny_low + 1))
             fig, ax = plt.subplots(1, 2, figsize=(9, 4))
-            ax[0].imshow(sg.overlay_mask(roi_rgb, m, (255, 0, 0), .5)); ax[0].set_title(f"{method} mask"); ax[0].axis("off")
-            ax[1].imshow(e, cmap="gray"); ax[1].set_title("Canny"); ax[1].axis("off"); plt.show()
+            ax[0].imshow(sg.overlay_mask(roi_rgb, m, (255, 0, 0), 0.5))
+            ax[0].set_title(f"{method} mask")
+            ax[0].axis("off")
+            ax[1].imshow(e, cmap="gray")
+            ax[1].set_title("Canny")
+            ax[1].axis("off")
+            plt.show()
+
 
         if os.environ.get("SCALPTRACK_HEADLESS") == "1":
-            print("Headless execution (scripts/run_notebooks.py): widgets skipped. Open the notebook in Jupyter to use them.")
+            print(
+                "Headless execution (scripts/run_notebooks.py): widgets skipped. Open the notebook in Jupyter to use them."
+            )
         else:
             try:
                 import ipywidgets as W
-                display(W.interactive(_view, method=["adaptive_gaussian", "adaptive_mean", "otsu", "fixed"], block=(3, 101, 2),
-                                      C=(0, 20), canny_low=(0, 200, 5), canny_high=(10, 300, 5)))
+
+                display(
+                    W.interactive(
+                        _view,
+                        method=["adaptive_gaussian", "adaptive_mean", "otsu", "fixed"],
+                        block=(3, 101, 2),
+                        C=(0, 20),
+                        canny_low=(0, 200, 5),
+                        canny_high=(10, 300, 5),
+                    )
+                )
             except ImportError:
                 print("ipywidgets not installed - interactive controls skipped (static results above).")
     """))

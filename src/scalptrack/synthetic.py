@@ -33,14 +33,16 @@ def capsule_mask(shape_hw: tuple[int, int], p0, p1, width: float) -> np.ndarray:
 
 
 def polyline_mask(shape_hw, points, width: float) -> np.ndarray:
+    """Union of capsules along a polyline: a shaft that can bend."""
     m = np.zeros(shape_hw, dtype=bool)
     for a, b in zip(points[:-1], points[1:]):
         m |= capsule_mask(shape_hw, a, b, width)
     return m
 
 
-def straight_shafts(n: int, width: float, angle_deg: float = 90.0, size: int = 160,
-                    spacing: float | None = None) -> dict:
+def straight_shafts(
+    n: int, width: float, angle_deg: float = 90.0, size: int = 160, spacing: float | None = None
+) -> dict:
     """``n`` separated parallel straight shafts of known width crossing the whole ROI.
 
     ``angle_deg`` is the shaft direction (90 = vertical). Truth: ``n`` components and
@@ -57,8 +59,15 @@ def straight_shafts(n: int, width: float, angle_deg: float = 90.0, size: int = 1
         off = (k - (n - 1) / 2.0) * spacing
         base = c + normal * off
         mask |= capsule_mask((size, size), base - hair_dir * reach, base + hair_dir * reach, width)
-    return {"mask": mask, "true_components": n, "true_crossings": n, "true_width_px": width,
-            "angle_deg": angle_deg, "kind": "straight_separated", "provenance": "synthetic"}
+    return {
+        "mask": mask,
+        "true_components": n,
+        "true_crossings": n,
+        "true_width_px": width,
+        "angle_deg": angle_deg,
+        "kind": "straight_separated",
+        "provenance": "synthetic",
+    }
 
 
 def curved_shafts(n: int, width: float, amplitude: float = 8.0, size: int = 160, seed: int = 0) -> dict:
@@ -78,8 +87,14 @@ def curved_shafts(n: int, width: float, amplitude: float = 8.0, size: int = 160,
         phase = rng.uniform(0, 2 * np.pi)
         pts = np.stack([x0 + amplitude * np.sin(ys / size * 2 * np.pi + phase), ys], axis=1)
         mask |= polyline_mask((size, size), pts, width)
-    return {"mask": mask, "true_components": n, "true_crossings": n, "true_width_px": width,
-            "kind": "curved_separated", "provenance": "synthetic"}
+    return {
+        "mask": mask,
+        "true_components": n,
+        "true_crossings": n,
+        "true_width_px": width,
+        "kind": "curved_separated",
+        "provenance": "synthetic",
+    }
 
 
 def challenging_fixtures(width: float = 5.0, size: int = 160, seed: int = 0) -> dict[str, dict]:
@@ -93,20 +108,27 @@ def challenging_fixtures(width: float = 5.0, size: int = 160, seed: int = 0) -> 
     out["crossing_X"] = {"mask": m, "true_hairs": 2, "kind": "crossing"}
 
     # Two parallel shafts touching along part of their length.
-    m = capsule_mask(s, (70, -5), (70, 165), width) | polyline_mask(s, [(92, -5), (73, 60), (73, 100), (92, 165)], width)
+    m = capsule_mask(s, (70, -5), (70, 165), width) | polyline_mask(
+        s, [(92, -5), (73, 60), (73, 100), (92, 165)], width
+    )
     out["touching"] = {"mask": m, "true_hairs": 2, "kind": "touching"}
 
     # One shaft broken into fragments by gaps: 1 hair, several components.
     m = capsule_mask(s, (80, -5), (80, 165), width)
     for y in (40, 80, 120):
-        m[y:y + 3, :] = False
+        m[y : y + 3, :] = False
     out["fragmented"] = {"mask": m, "true_hairs": 1, "kind": "fragmented"}
 
     # One curling shaft crossing a horizontal reference line three times.
     t = np.linspace(0, 1, 120)
     pts = np.stack([20 + 120 * t, 80 + 30 * np.sin(t * 3 * np.pi)], axis=1)
     m = polyline_mask(s, pts, width)
-    out["curl_multi_crossing"] = {"mask": m, "true_hairs": 1, "kind": "curl", "reference_line": (0.0, 80.0, size - 1.0, 80.0)}
+    out["curl_multi_crossing"] = {
+        "mask": m,
+        "true_hairs": 1,
+        "kind": "curl",
+        "reference_line": (0.0, 80.0, size - 1.0, 80.0),
+    }
 
     # Salt noise sprinkled into a 3-shaft mask.
     base = straight_shafts(3, width, 90.0, size)["mask"].copy()
@@ -121,14 +143,24 @@ def challenging_fixtures(width: float = 5.0, size: int = 160, seed: int = 0) -> 
 # --------------------------------------------------------------------------- image rendering
 
 
-def render_hair_image(mask: np.ndarray, contrast: float = 1.0, blur_sigma: float = 0.8, noise_sigma: float = 4.0,
-                      seed: int = 0, skin_rgb=SKIN_RGB, hair_rgb=HAIR_RGB, background_texture: float = 6.0) -> np.ndarray:
+def render_hair_image(
+    mask: np.ndarray,
+    contrast: float = 1.0,
+    blur_sigma: float = 0.8,
+    noise_sigma: float = 4.0,
+    seed: int = 0,
+    skin_rgb=SKIN_RGB,
+    hair_rgb=HAIR_RGB,
+    background_texture: float = 6.0,
+) -> np.ndarray:
     """RGB close-up-like image from a hair mask. ``contrast`` < 1 makes hair closer to skin (light/grey hair)."""
     rng = np.random.default_rng(seed)
     h, w = mask.shape
     skin = np.asarray(skin_rgb, float)
     hair = skin + contrast * (np.asarray(hair_rgb, float) - skin)
-    low = cv2.resize(rng.normal(0, 1, (max(2, h // 16), max(2, w // 16))), (w, h), interpolation=cv2.INTER_CUBIC)
+    low = cv2.resize(
+        rng.normal(0, 1, (max(2, h // 16), max(2, w // 16))), (w, h), interpolation=cv2.INTER_CUBIC
+    )
     img = np.empty((h, w, 3), dtype=np.float64)
     img[:] = skin
     img += background_texture * low[..., None]
@@ -144,7 +176,7 @@ def add_shadow(rgb: np.ndarray, strength: float = 0.85, region: tuple | None = N
     h, w = rgb.shape[:2]
     x0, y0, x1, y1 = region or (0, int(h * 0.6), int(w * 0.45), h)
     out = rgb.astype(np.float64).copy()
-    out[y0:y1, x0:x1] *= (1.0 - strength)
+    out[y0:y1, x0:x1] *= 1.0 - strength
     return out.astype(np.uint8)
 
 
@@ -153,12 +185,14 @@ def add_glare(rgb: np.ndarray, centre=None, radius: float = 10.0, peak: float = 
     h, w = rgb.shape[:2]
     cx, cy = centre or (w * 0.7, h * 0.3)
     yy, xx = np.mgrid[0:h, 0:w]
-    g = np.exp(-((xx - cx) ** 2 + (yy - cy) ** 2) / (2 * radius ** 2))[..., None]
+    g = np.exp(-((xx - cx) ** 2 + (yy - cy) ** 2) / (2 * radius**2))[..., None]
     out = rgb.astype(np.float64) * (1 - g) + peak * g
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
-def add_flakes(rgb: np.ndarray, n: int = 12, seed: int = 0, radius_range=(2, 4)) -> tuple[np.ndarray, np.ndarray]:
+def add_flakes(
+    rgb: np.ndarray, n: int = 12, seed: int = 0, radius_range=(2, 4)
+) -> tuple[np.ndarray, np.ndarray]:
     """Draw small white blobs (synthetic flake stand-ins); returns image and the true flake mask."""
     rng = np.random.default_rng(seed)
     h, w = rgb.shape[:2]
@@ -176,10 +210,16 @@ def clean_noisy_pair(size: int = 160, noise_sigma: float = 15.0, seed: int = 0) 
     """Known clean grayscale fixture plus its noisy copy for MSE/PSNR filter comparisons."""
     from .preprocessing import add_gaussian_noise, to_gray
 
-    clean_rgb = render_hair_image(curved_shafts(6, 4.0, size=size, seed=seed)["mask"], noise_sigma=0.0, seed=seed)
+    clean_rgb = render_hair_image(
+        curved_shafts(6, 4.0, size=size, seed=seed)["mask"], noise_sigma=0.0, seed=seed
+    )
     clean = to_gray(clean_rgb)
-    return {"clean": clean, "noisy": add_gaussian_noise(clean, noise_sigma, seed + 1), "noise_sigma": noise_sigma,
-            "provenance": "synthetic"}
+    return {
+        "clean": clean,
+        "noisy": add_gaussian_noise(clean, noise_sigma, seed + 1),
+        "noise_sigma": noise_sigma,
+        "provenance": "synthetic",
+    }
 
 
 # --------------------------------------------------------------------------- classifier smoke-test set
@@ -205,12 +245,15 @@ def synthetic_texture_sample(label: str, seed: int, size: int = 128) -> np.ndarr
     else:
         raise KeyError(f"Unknown synthetic class {label!r}")
     mask = curved_shafts(n, wid, amplitude=amp, size=size, seed=seed)["mask"]
-    img = render_hair_image(mask, contrast=contrast, blur_sigma=rng.uniform(0.6, 1.4), noise_sigma=rng.uniform(2, 8), seed=seed)
+    img = render_hair_image(
+        mask, contrast=contrast, blur_sigma=rng.uniform(0.6, 1.4), noise_sigma=rng.uniform(2, 8), seed=seed
+    )
     return add_flakes(img, n=flakes, seed=seed, radius_range=(1, 3))[0] if flakes else img
 
 
-def synthetic_classification_set(n_sources_per_class: int = 30, variants_per_source: int = 3, seed: int = 0,
-                                 size: int = 128) -> list[dict]:
+def synthetic_classification_set(
+    n_sources_per_class: int = 30, variants_per_source: int = 3, seed: int = 0, size: int = 128
+) -> list[dict]:
     """Synthetic images with *groups*: each source has flipped/rotated variants sharing ``group_id``.
 
     The variants mimic augmentation derivatives in public datasets, so the
@@ -225,8 +268,15 @@ def synthetic_classification_set(n_sources_per_class: int = 30, variants_per_sou
             base = synthetic_texture_sample(label, src_seed, size)
             gid = f"syn_{label}_{s:03d}"
             for v in range(variants_per_source):
-                rows.append({"image": np.ascontiguousarray(ops[v % len(ops)](base)), "label": label,
-                             "group_id": gid, "image_id": f"{gid}_v{v}", "provenance": "synthetic"})
+                rows.append(
+                    {
+                        "image": np.ascontiguousarray(ops[v % len(ops)](base)),
+                        "label": label,
+                        "group_id": gid,
+                        "image_id": f"{gid}_v{v}",
+                        "provenance": "synthetic",
+                    }
+                )
     return rows
 
 
@@ -250,8 +300,16 @@ def _value_noise(rng: np.random.Generator, shape: tuple[int, int], octaves=(8, 2
     return acc / (acc.max() or 1.0)
 
 
-def render_stereo_scene(width: int = 480, height: int = 360, focal_px: float = 500.0, baseline_mm: float = 60.0,
-                        seed: int = 0, include_dome: bool = True, supersample: int = 2, noise_sigma: float = 1.5) -> dict:
+def render_stereo_scene(
+    width: int = 480,
+    height: int = 360,
+    focal_px: float = 500.0,
+    baseline_mm: float = 60.0,
+    seed: int = 0,
+    include_dome: bool = True,
+    supersample: int = 2,
+    noise_sigma: float = 1.5,
+) -> dict:
     """Render a rectified stereo pair of ONE synthetic 3-D scene with a known pinhole model.
 
     Scene (millimetres, left camera at the origin looking down +Z, right camera at X = +baseline):
@@ -271,9 +329,12 @@ def render_stereo_scene(width: int = 480, height: int = 360, focal_px: float = 5
         surfaces.append({"id": 3, "type": "sphere", "C": (-120.0, 150.0, 1050.0), "R": 170.0, "name": "dome"})
     tex_res = 2.0  # mm per texture cell
     tex_size = (int(4200 / tex_res), int(4200 / tex_res))
-    textures = {s["id"]: _value_noise(np.random.default_rng(seed * 10 + s["id"] + 1), tex_size) for s in surfaces}
+    textures = {
+        s["id"]: _value_noise(np.random.default_rng(seed * 10 + s["id"] + 1), tex_size) for s in surfaces
+    }
 
     def cast(cam_x: float, ss: int):
+        """Ray-cast one camera at X = ``cam_x``; returns intensity, depth and surface id per pixel."""
         hh, ww = height * ss, width * ss
         v, u = np.mgrid[0:hh, 0:ww].astype(np.float64)
         u = (u + 0.5) / ss - 0.5
@@ -287,7 +348,13 @@ def render_stereo_scene(width: int = 480, height: int = 360, focal_px: float = 5
             if s["type"] == "plane":
                 Z = s["Z"]
                 xw, yw = cam_x + dx * Z, dy * Z
-                hit = (xw >= s["x"][0]) & (xw <= s["x"][1]) & (yw >= s["y"][0]) & (yw <= s["y"][1]) & (Z < depth)
+                hit = (
+                    (xw >= s["x"][0])
+                    & (xw <= s["x"][1])
+                    & (yw >= s["y"][0])
+                    & (yw <= s["y"][1])
+                    & (Z < depth)
+                )
                 depth[hit], sid[hit], X[hit], Y[hit] = Z, s["id"], xw[hit], yw[hit]
             else:
                 Cx, Cy, Cz = s["C"]
@@ -315,8 +382,12 @@ def render_stereo_scene(width: int = 480, height: int = 360, focal_px: float = 5
             iv = np.clip(tv, 0, tex.shape[0] - 2)
             u0, v0 = iu.astype(int), iv.astype(int)
             fu, fv = iu - u0, iv - v0
-            val = (tex[v0, u0] * (1 - fu) * (1 - fv) + tex[v0, u0 + 1] * fu * (1 - fv)
-                   + tex[v0 + 1, u0] * (1 - fu) * fv + tex[v0 + 1, u0 + 1] * fu * fv)
+            val = (
+                tex[v0, u0] * (1 - fu) * (1 - fv)
+                + tex[v0, u0 + 1] * fu * (1 - fv)
+                + tex[v0 + 1, u0] * (1 - fu) * fv
+                + tex[v0 + 1, u0 + 1] * fu * fv
+            )
             shade = {0: 0.55, 1: 0.8, 2: 1.0, 3: 0.9}[s["id"]]
             img[m] = 25 + 210 * shade * val
         if ss > 1:
@@ -340,15 +411,36 @@ def render_stereo_scene(width: int = 480, height: int = 360, focal_px: float = 5
 
     K = np.array([[focal_px, 0, cx], [0, focal_px, cy], [0, 0, 1]], dtype=np.float64)
     return {
-        "left": left, "right": right,
-        "gt_disparity_px": gt_disp, "gt_depth": depth_l, "surface_id": sid_l,
-        "visible_in_right": visible, "out_of_frame": ~in_frame,
-        "calibration": {"K1": K, "K2": K.copy(), "D1": np.zeros(5), "D2": np.zeros(5),
-                        "R": np.eye(3), "T": np.array([-baseline_mm, 0.0, 0.0]), "baseline": baseline_mm,
-                        "focal_px": focal_px, "units": "mm", "rectified": True,
-                        "calibration_id": f"synthetic_pinhole_seed{seed}", "source": "synthetic (known by construction)"},
-        "scene": {"surfaces": surfaces, "seed": seed, "texture_mm_per_cell": tex_res, "supersample": supersample,
-                  "noise_sigma": noise_sigma, "units": "mm", "image_size_wh": [width, height]},
+        "left": left,
+        "right": right,
+        "gt_disparity_px": gt_disp,
+        "gt_depth": depth_l,
+        "surface_id": sid_l,
+        "visible_in_right": visible,
+        "out_of_frame": ~in_frame,
+        "calibration": {
+            "K1": K,
+            "K2": K.copy(),
+            "D1": np.zeros(5),
+            "D2": np.zeros(5),
+            "R": np.eye(3),
+            "T": np.array([-baseline_mm, 0.0, 0.0]),
+            "baseline": baseline_mm,
+            "focal_px": focal_px,
+            "units": "mm",
+            "rectified": True,
+            "calibration_id": f"synthetic_pinhole_seed{seed}",
+            "source": "synthetic (known by construction)",
+        },
+        "scene": {
+            "surfaces": surfaces,
+            "seed": seed,
+            "texture_mm_per_cell": tex_res,
+            "supersample": supersample,
+            "noise_sigma": noise_sigma,
+            "units": "mm",
+            "image_size_wh": [width, height],
+        },
         "pair_id": f"synthetic_scene_seed{seed}",
         "provenance": "synthetic",
         "label": "SYNTHETIC algorithm demonstration - not a scalp reconstruction",

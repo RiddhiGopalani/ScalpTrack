@@ -29,7 +29,9 @@ def build():
     c.append(save_cell_fn())
     c.append(status_cell())
     c.append(code("""
-        INPUTS = [(d["rgb"], d["image_id"], "real") for d in DEV[:2]] + [(SYN["flakes"]["rgb"], "flakes", "synthetic")]
+        INPUTS = [(d["rgb"], d["image_id"], "real") for d in DEV[:2]] + [
+            (SYN["flakes"]["rgb"], "flakes", "synthetic")
+        ]
         print("edge parameters:", cfg["edges"])
     """))
 
@@ -44,12 +46,34 @@ def build():
         for rgb, name, prov in INPUTS:
             gray = to_gray(rgb)
             sob, pre = edges.sobel_gradients(gray, cfg["edges"]["sobel_ksize"]), edges.prewitt_gradients(gray)
-            fig = show_grid([gray, sob["gx"], sob["gy"], sob["magnitude"], pre["gx"], pre["gy"], pre["magnitude"],
-                             np.rad2deg(sob["orientation"])],
-                            ["gray", "Sobel gx (signed)", "Sobel gy (signed)", "Sobel |g|", "Prewitt gx", "Prewitt gy",
-                             "Prewitt |g|", "Sobel orientation (deg)"],
-                            ncols=4, signed={1, 2, 4, 5}, cmap="magma", suptitle=f"Gradients - {name} [{prov}]")
-            save_fig(fig, f"gradients_{name}", prov); plt.show()
+            fig = show_grid(
+                [
+                    gray,
+                    sob["gx"],
+                    sob["gy"],
+                    sob["magnitude"],
+                    pre["gx"],
+                    pre["gy"],
+                    pre["magnitude"],
+                    np.rad2deg(sob["orientation"]),
+                ],
+                [
+                    "gray",
+                    "Sobel gx (signed)",
+                    "Sobel gy (signed)",
+                    "Sobel |g|",
+                    "Prewitt gx",
+                    "Prewitt gy",
+                    "Prewitt |g|",
+                    "Sobel orientation (deg)",
+                ],
+                ncols=4,
+                signed={1, 2, 4, 5},
+                cmap="magma",
+                suptitle=f"Gradients - {name} [{prov}]",
+            )
+            save_fig(fig, f"gradients_{name}", prov)
+            plt.show()
     """))
     c.append(md("""
         ## 2. Canny with several threshold pairs, and binary comparison
@@ -61,9 +85,15 @@ def build():
         for rgb, name, prov in INPUTS:
             res = edges.compare_edges(to_gray(rgb), cfg)
             maps = res["binary_maps"]
-            fig = show_grid([rgb] + list(maps.values()), ["input"] + list(maps), ncols=6, size=2.6,
-                            suptitle=f"Binary edge maps - {name} [{prov}]")
-            save_fig(fig, f"edge_maps_{name}", prov); plt.show()
+            fig = show_grid(
+                [rgb] + list(maps.values()),
+                ["input"] + list(maps),
+                ncols=6,
+                size=2.6,
+                suptitle=f"Binary edge maps - {name} [{prov}]",
+            )
+            save_fig(fig, f"edge_maps_{name}", prov)
+            plt.show()
             for k, v in res["summary"].items():
                 summ.append({"image": name, "provenance": prov, "map": k, **v})
         edge_table = pd.DataFrame(summ)
@@ -76,16 +106,32 @@ def build():
         so edge pixels or edge fragments cannot be used as a hair count.
     """))
     c.append(code("""
-        rgb = SYN["clean"]["rgb"]; gray = to_gray(rgb)
-        can = edges.canny(gray, *cfg["edges"]["canny_pairs"][1], cfg["edges"]["canny_blur_ksize"], cfg["edges"]["canny_blur_sigma"])
+        rgb = SYN["clean"]["rgb"]
+        gray = to_gray(rgb)
+        can = edges.canny(
+            gray, *cfg["edges"]["canny_pairs"][1], cfg["edges"]["canny_blur_ksize"], cfg["edges"]["canny_blur_sigma"]
+        )
         row = gray.shape[0] // 2
         fig, ax = plt.subplots(1, 2, figsize=(14, 3.5))
-        ax[0].imshow(rgb); ax[0].axhline(row, color="y"); ax[0].set_title("profile row"); ax[0].axis("off")
+        ax[0].imshow(rgb)
+        ax[0].axhline(row, color="y")
+        ax[0].set_title("profile row")
+        ax[0].axis("off")
         ax[1].plot(gray[row], label="gray intensity")
         ax[1].vlines(np.nonzero(can[row])[0], 0, 255, colors="r", lw=0.8, label="Canny edge")
-        ax[1].fill_between(np.arange(gray.shape[1]), 0, 255 * SYN["clean"]["hair_truth"][row], color="k", alpha=.15, label="true shaft")
-        ax[1].legend(fontsize=8); ax[1].set_title("Intensity profile: each dark shaft gives two Canny edges")
-        plt.tight_layout(); save_fig(fig, "canny_two_edges_per_shaft", "synthetic"); plt.show()
+        ax[1].fill_between(
+            np.arange(gray.shape[1]),
+            0,
+            255 * SYN["clean"]["hair_truth"][row],
+            color="k",
+            alpha=0.15,
+            label="true shaft",
+        )
+        ax[1].legend(fontsize=8)
+        ax[1].set_title("Intensity profile: each dark shaft gives two Canny edges")
+        plt.tight_layout()
+        save_fig(fig, "canny_two_edges_per_shaft", "synthetic")
+        plt.show()
         runs = np.diff(np.concatenate([[0], SYN["clean"]["hair_truth"][row].astype(int), [0]]))
         print(f"shafts crossing this row: {(runs == 1).sum()} | Canny edge pixels on the row: {int(can[row].sum())}")
     """))
@@ -100,11 +146,23 @@ def build():
         for rgb, name, prov in INPUTS:
             res = sg.compare_thresholds(to_gray(rgb), cfg, inverse=True)
             names = list(res["masks"])
-            fig = show_grid([sg.overlay_mask(rgb, res["masks"][k], (255, 0, 0), .55) for k in names], names, ncols=4, size=3,
-                            suptitle=f"Threshold methods (red = dark candidate) - {name} [{prov}]")
-            save_fig(fig, f"threshold_overlays_{name}", prov); plt.show()
+            fig = show_grid(
+                [sg.overlay_mask(rgb, res["masks"][k], (255, 0, 0), 0.55) for k in names],
+                names,
+                ncols=4,
+                size=3,
+                suptitle=f"Threshold methods (red = dark candidate) - {name} [{prov}]",
+            )
+            save_fig(fig, f"threshold_overlays_{name}", prov)
+            plt.show()
             for k in names:
-                row = {"image": name, "provenance": prov, "method": k, **res["params"][k], "foreground_fraction": res["foreground_fraction"][k]}
+                row = {
+                    "image": name,
+                    "provenance": prov,
+                    "method": k,
+                    **res["params"][k],
+                    "foreground_fraction": res["foreground_fraction"][k],
+                }
                 if prov == "synthetic":
                     row.update(mask_precision_recall(res["masks"][k], SYN["flakes"]["hair_truth"]))
                 frac_rows.append(row)
@@ -125,6 +183,7 @@ def build():
     """))
     c.append(code("""
         from scalptrack import synthetic as syn
+
         dev_cases = {k: (v["rgb"], v["hair_truth"]) for k, v in SYN.items()}
         for s in (7, 8):
             m = syn.curved_shafts(9, 3.0, seed=s, size=200)["mask"]
@@ -133,7 +192,10 @@ def build():
         for bs in (15, 31, 51):
             for C in (3, 5, 8, 10, 12, 15):
                 c2 = {**cfg, "segmentation": {**cfg["segmentation"], "hair_block_size": bs, "adaptive_c": C}}
-                f1 = {k: (mask_precision_recall(sg.segment_candidates(rgb, c2)["hair"], t)["f1"] or 0.0) for k, (rgb, t) in dev_cases.items()}
+                f1 = {
+                    k: (mask_precision_recall(sg.segment_candidates(rgb, c2)["hair"], t)["f1"] or 0.0)
+                    for k, (rgb, t) in dev_cases.items()
+                }
                 rows.append({"block_size": bs, "C": C, **f1, "mean_f1": float(np.mean(list(f1.values())))})
         sweep = pd.DataFrame(rows).sort_values("mean_f1", ascending=False)
         sweep.to_csv(project_path(cfg, "results", NB, "SYNTHETIC_adaptive_selection.csv", create=True), index=False)
@@ -141,8 +203,13 @@ def build():
         best = sweep.iloc[0]
         chosen = (int(best["block_size"]), float(best["C"]))
         configured = (cfg["segmentation"]["hair_block_size"], float(cfg["segmentation"]["adaptive_c"]))
-        print("selected on development fixtures:", chosen, "| configured:", configured,
-              "| MATCH" if chosen == configured else "| MISMATCH - update configs/default.yaml")
+        print(
+            "selected on development fixtures:",
+            chosen,
+            "| configured:",
+            configured,
+            "| MATCH" if chosen == configured else "| MISMATCH - update configs/default.yaml",
+        )
     """))
     c.append(md("""
         The winning block (15 px) is small because the synthetic shafts are only 3–4 px wide; an adaptive block must be
@@ -158,7 +225,9 @@ def build():
     c.append(code("""
         truth = syn.curved_shafts(6, 2.0, seed=4)["mask"]
         thin = syn.render_hair_image(truth, seed=4)
-        raw = sg.threshold_adaptive(to_gray(thin), "gaussian", cfg["segmentation"]["hair_block_size"], cfg["segmentation"]["adaptive_c"])
+        raw = sg.threshold_adaptive(
+            to_gray(thin), "gaussian", cfg["segmentation"]["hair_block_size"], cfg["segmentation"]["adaptive_c"]
+        )
         k, a = cfg["segmentation"]["close_kernel"], cfg["segmentation"]["min_component_area"]
         variants = {
             "exact 2-px truth mask": truth,
@@ -167,9 +236,14 @@ def build():
             f"threshold + close {k} + area>={a} (default)": sg.cleanup_mask(raw, 0, k, a),
             f"threshold + open 3 + close {k}": sg.cleanup_mask(raw, 3, k, a),
         }
-        fig = show_grid([thin] + list(variants.values()), ["rendered 2-px shafts"] + list(variants), ncols=6, size=2.7)
-        save_fig(fig, "cleanup_before_after", "synthetic"); plt.show()
-        pd.DataFrame([{"variant": n, "pixels": int(v.sum()), **mask_precision_recall(v, truth)} for n, v in variants.items()]).round(3)
+        fig = show_grid(
+            [thin] + list(variants.values()), ["rendered 2-px shafts"] + list(variants), ncols=6, size=2.7
+        )
+        save_fig(fig, "cleanup_before_after", "synthetic")
+        plt.show()
+        pd.DataFrame(
+            [{"variant": n, "pixels": int(v.sum()), **mask_precision_recall(v, truth)} for n, v in variants.items()]
+        ).round(3)
     """))
     c.append(md("""
         Applied to an exact 2-px mask, a 3×3 opening removes almost every shaft pixel (recall collapses). After
@@ -188,10 +262,21 @@ def build():
         for rgb, name, prov in INPUTS + [(SYN["clean"]["rgb"], "clean", "synthetic")]:
             seg = sg.segment_candidates(rgb, cfg)
             ov = sg.label_overlay(rgb, {k: seg[k] for k in ("scalp", "hair", "flake", "unknown")}, colors)
-            fig = show_grid([rgb, seg["hair_raw"], seg["hair"], seg["flake"], ov],
-                            ["input", "hair raw", "hair cleaned", "flake candidates", "overlay (green scalp/red hair/cyan flake/grey unknown)"],
-                            ncols=5, size=3.1, suptitle=f"Candidate masks - {name} [{prov}]")
-            save_fig(fig, f"candidate_masks_{name}", prov); plt.show()
+            fig = show_grid(
+                [rgb, seg["hair_raw"], seg["hair"], seg["flake"], ov],
+                [
+                    "input",
+                    "hair raw",
+                    "hair cleaned",
+                    "flake candidates",
+                    "overlay (green scalp/red hair/cyan flake/grey unknown)",
+                ],
+                ncols=5,
+                size=3.1,
+                suptitle=f"Candidate masks - {name} [{prov}]",
+            )
+            save_fig(fig, f"candidate_masks_{name}", prov)
+            plt.show()
             cov = sg.coverage_descriptors(seg["hair"], seg["scalp"], seg["flake"], ~seg["unknown"])
             cov_rows.append({"image": name, "provenance": prov, **cov})
         pd.DataFrame(cov_rows).round(4)
@@ -206,34 +291,53 @@ def build():
     c.append(code("""
         rows, panels, titles = [], [], []
         for case in ("clean", "shadow", "light_hair", "blurred", "glare"):
-            rgb = SYN[case]["rgb"]; truth = SYN[case]["hair_truth"]
+            rgb = SYN[case]["rgb"]
+            truth = SYN[case]["hair_truth"]
             seg = sg.segment_candidates(rgb, cfg)
             otsu, _ = sg.threshold_otsu(to_gray(rgb))
             fixed = sg.threshold_fixed(to_gray(rgb), cfg["segmentation"]["fixed_threshold"])
-            rows.append({"case": case,
-                         "fixed: precision": mask_precision_recall(fixed, truth)["precision"],
-                         "fixed: recall": mask_precision_recall(fixed, truth)["recall"],
-                         "otsu: precision": mask_precision_recall(otsu, truth)["precision"],
-                         "adaptive+cleanup: precision": mask_precision_recall(seg["hair"], truth)["precision"],
-                         "adaptive+cleanup: recall": mask_precision_recall(seg["hair"], truth)["recall"],
-                         "flake candidates (px)": int(seg["flake"].sum()), "unknown (px)": int(seg["unknown"].sum())})
-            panels += [rgb, sg.overlay_mask(rgb, fixed, (255, 0, 0), .6), sg.overlay_mask(rgb, seg["flake"], (0, 220, 255), .9)]
+            rows.append(
+                {
+                    "case": case,
+                    "fixed: precision": mask_precision_recall(fixed, truth)["precision"],
+                    "fixed: recall": mask_precision_recall(fixed, truth)["recall"],
+                    "otsu: precision": mask_precision_recall(otsu, truth)["precision"],
+                    "adaptive+cleanup: precision": mask_precision_recall(seg["hair"], truth)["precision"],
+                    "adaptive+cleanup: recall": mask_precision_recall(seg["hair"], truth)["recall"],
+                    "flake candidates (px)": int(seg["flake"].sum()),
+                    "unknown (px)": int(seg["unknown"].sum()),
+                }
+            )
+            panels += [
+                rgb,
+                sg.overlay_mask(rgb, fixed, (255, 0, 0), 0.6),
+                sg.overlay_mask(rgb, seg["flake"], (0, 220, 255), 0.9),
+            ]
             titles += [case, f"{case}: fixed-threshold hair", f"{case}: flake candidates"]
         fig = show_grid(panels, titles, ncols=6, size=2.7, suptitle="Failure cases with known synthetic truth")
-        save_fig(fig, "failure_cases", "synthetic"); plt.show()
+        save_fig(fig, "failure_cases", "synthetic")
+        plt.show()
         fail = pd.DataFrame(rows).set_index("case")
         fail.to_csv(project_path(cfg, "results", NB, "SYNTHETIC_failure_cases.csv", create=True))
         display(fail.round(3))
         # Statements below are computed from the table, not written in advance.
         f = fail.fillna(0)
-        print(f"shadow     : fixed-threshold precision {f.loc['shadow', 'fixed: precision']:.2f} (clean {f.loc['clean', 'fixed: precision']:.2f}) "
-              f"-> shadowed skin is labelled as hair; adaptive precision {f.loc['shadow', 'adaptive+cleanup: precision']:.2f}")
-        print(f"light hair : fixed-threshold recall {f.loc['light_hair', 'fixed: recall']:.2f} (clean {f.loc['clean', 'fixed: recall']:.2f}) "
-              f"-> the dark global threshold misses low-contrast shafts")
-        print(f"blur       : fixed recall {f.loc['blurred', 'fixed: recall']:.2f}; adaptive precision {f.loc['blurred', 'adaptive+cleanup: precision']:.2f} "
-              f"-> widened, faded shafts")
-        print(f"glare      : {int(f.loc['glare', 'flake candidates (px)'])} flake-candidate px vs {int(f.loc['clean', 'flake candidates (px)'])} "
-              f"on the flake-free clean image -> glare passes the brightness/saturation flake test")
+        print(
+            f"shadow     : fixed-threshold precision {f.loc['shadow', 'fixed: precision']:.2f} (clean {f.loc['clean', 'fixed: precision']:.2f}) "
+            f"-> shadowed skin is labelled as hair; adaptive precision {f.loc['shadow', 'adaptive+cleanup: precision']:.2f}"
+        )
+        print(
+            f"light hair : fixed-threshold recall {f.loc['light_hair', 'fixed: recall']:.2f} (clean {f.loc['clean', 'fixed: recall']:.2f}) "
+            f"-> the dark global threshold misses low-contrast shafts"
+        )
+        print(
+            f"blur       : fixed recall {f.loc['blurred', 'fixed: recall']:.2f}; adaptive precision {f.loc['blurred', 'adaptive+cleanup: precision']:.2f} "
+            f"-> widened, faded shafts"
+        )
+        print(
+            f"glare      : {int(f.loc['glare', 'flake candidates (px)'])} flake-candidate px vs {int(f.loc['clean', 'flake candidates (px)'])} "
+            f"on the flake-free clean image -> glare passes the brightness/saturation flake test"
+        )
     """))
     c.append(md("""
         **Reading the table.**

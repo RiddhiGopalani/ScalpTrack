@@ -31,8 +31,13 @@ KAGGLE_REFS = {"kaggle_hair_diseases": "sundarannamalai/hair-diseases"}
 
 
 def write_source_info(dest: Path, scfg: dict, version: str | None, method: str) -> Path:
-    info = {"url": scfg.get("url"), "license": scfg.get("license"), "version": version,
-            "download_date": dt.date.today().isoformat(), "method": method}
+    info = {
+        "url": scfg.get("url"),
+        "license": scfg.get("license"),
+        "version": version,
+        "download_date": dt.date.today().isoformat(),
+        "method": method,
+    }
     p = dest / "SOURCE_INFO.json"
     p.write_text(json.dumps(info, indent=2), encoding="utf-8")
     return p
@@ -68,8 +73,11 @@ def kaggle_download(source: str, scfg: dict, dest: Path) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", default=None)
-    ap.add_argument("--record-only", action="store_true",
-                    help="data already extracted manually: only write SOURCE_INFO.json")
+    ap.add_argument(
+        "--record-only",
+        action="store_true",
+        help="data already extracted manually: only write SOURCE_INFO.json",
+    )
     ap.add_argument("--version", help="export/version string to record (e.g. Roboflow version number)")
     args = ap.parse_args(argv)
     cfg = load_config()
@@ -82,12 +90,14 @@ def main(argv=None) -> int:
         return 0
     if source in KAGGLE_REFS:
         return kaggle_download(source, scfg, dest)
-    print(f"'{source}' is a Roboflow Universe export. Manual steps:\n"
-          f"  1. Open {scfg['url']} and sign in.\n"
-          f"  2. Choose a version -> Download Dataset -> format 'YOLOv8' -> 'Download zip to computer'.\n"
-          f"  3. Extract it into {dest} (so that {dest}\\data.yaml exists).\n"
-          f"  4. python scripts/download_dataset.py --source {source} --record-only --version <N>\n"
-          f"  5. python scripts/audit_dataset.py --source {source}")
+    print(
+        f"'{source}' is a Roboflow Universe export. Manual steps:\n"
+        f"  1. Open {scfg['url']} and sign in.\n"
+        f"  2. Choose a version -> Download Dataset -> format 'YOLOv8' -> 'Download zip to computer'.\n"
+        f"  3. Extract it into {dest} (so that {dest}\\data.yaml exists).\n"
+        f"  4. python scripts/download_dataset.py --source {source} --record-only --version <N>\n"
+        f"  5. python scripts/audit_dataset.py --source {source}"
+    )
     return 0
 
 

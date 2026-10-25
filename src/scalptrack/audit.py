@@ -13,9 +13,9 @@ Absent patient identity, physical scale and stereo relationships are left null -
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
-import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,11 +29,35 @@ from .config import display_path
 from .io_utils import DEFAULT_EXTENSIONS, file_sha256
 
 MANIFEST_COLUMNS = [
-    "image_id", "original_id", "relative_path", "dataset_source", "dataset_version", "license", "download_date",
-    "raw_label", "canonical_label", "task_type", "width_px", "height_px", "channels", "file_hash",
-    "duplicate_group_id", "patient_id", "split", "publisher_split", "roi_id", "parent_image_id", "bbox_xyxy",
-    "has_hair_instance_labels", "has_count_labels", "has_segmentation_masks", "pixel_scale_um_per_px",
-    "stereo_pair_id", "calibration_id", "exclusion_reason", "notes",
+    "image_id",
+    "original_id",
+    "relative_path",
+    "dataset_source",
+    "dataset_version",
+    "license",
+    "download_date",
+    "raw_label",
+    "canonical_label",
+    "task_type",
+    "width_px",
+    "height_px",
+    "channels",
+    "file_hash",
+    "duplicate_group_id",
+    "patient_id",
+    "split",
+    "publisher_split",
+    "roi_id",
+    "parent_image_id",
+    "bbox_xyxy",
+    "has_hair_instance_labels",
+    "has_count_labels",
+    "has_segmentation_masks",
+    "pixel_scale_um_per_px",
+    "stereo_pair_id",
+    "calibration_id",
+    "exclusion_reason",
+    "notes",
 ]
 SPLITS = ("train", "validation", "test")
 
@@ -43,18 +67,25 @@ class DatasetMissingError(FileNotFoundError):
 
 
 def missing_dataset_message(source_name: str, source_cfg: dict, root: Path) -> str:
+    """Actionable text telling the user where to download a source and how to lay out its folders."""
     d = root / source_cfg["dir"]
     if source_cfg.get("layout") == "yolo":
-        layout = (f"  {d}\\data.yaml\n  {d}\\train\\images\\*.jpg   {d}\\train\\labels\\*.txt\n"
-                  f"  {d}\\valid\\images ...          {d}\\test\\images ...")
+        layout = (
+            f"  {d}\\data.yaml\n  {d}\\train\\images\\*.jpg   {d}\\train\\labels\\*.txt\n"
+            f"  {d}\\valid\\images ...          {d}\\test\\images ..."
+        )
     else:
-        layout = (f"  {d}\\<optional wrapper folder>\\train\\<Class Name>\\*.jpg\n"
-                  f"  {d}\\<optional wrapper folder>\\val\\<Class Name>\\*.jpg\n"
-                  f"  {d}\\<optional wrapper folder>\\test\\<Class Name>\\*.jpg\n"
-                  f"  (or, without a publisher split: {d}\\<Class Name>\\*.jpg)")
-    return (f"Dataset '{source_name}' was not found or contains no images.\n"
-            f"Download it from {source_cfg.get('url')} (license: {source_cfg.get('license')}) and extract it so that:\n"
-            f"{layout}\nSee docs/dataset_setup.md for step-by-step instructions.")
+        layout = (
+            f"  {d}\\<optional wrapper folder>\\train\\<Class Name>\\*.jpg\n"
+            f"  {d}\\<optional wrapper folder>\\val\\<Class Name>\\*.jpg\n"
+            f"  {d}\\<optional wrapper folder>\\test\\<Class Name>\\*.jpg\n"
+            f"  (or, without a publisher split: {d}\\<Class Name>\\*.jpg)"
+        )
+    return (
+        f"Dataset '{source_name}' was not found or contains no images.\n"
+        f"Download it from {source_cfg.get('url')} (license: {source_cfg.get('license')}) and extract it so that:\n"
+        f"{layout}\nSee docs/dataset_setup.md for step-by-step instructions."
+    )
 
 
 # --------------------------------------------------------------------------- scanning
@@ -62,9 +93,9 @@ def missing_dataset_message(source_name: str, source_cfg: dict, root: Path) -> s
 
 @dataclass
 class ScanResult:
-    files: pd.DataFrame          # one row per image file
-    regions: pd.DataFrame        # one row per labelled box (detection exports only)
-    other_files: list[str]       # non-image files found (reported, not used)
+    files: pd.DataFrame  # one row per image file
+    regions: pd.DataFrame  # one row per labelled box (detection exports only)
+    other_files: list[str]  # non-image files found (reported, not used)
     class_names: list[str]
     layout: str
 
@@ -86,8 +117,13 @@ def scan_source(source_cfg: dict, root: Path, extensions=DEFAULT_EXTENSIONS) -> 
         raise DatasetMissingError(str(base))
     if source_cfg.get("layout") == "yolo":
         return _scan_yolo(base, images, others)
-    aliases = source_cfg.get("split_aliases") or {"train": "train", "val": "validation", "valid": "validation",
-                                                  "validation": "validation", "test": "test"}
+    aliases = source_cfg.get("split_aliases") or {
+        "train": "train",
+        "val": "validation",
+        "valid": "validation",
+        "validation": "validation",
+        "test": "test",
+    }
     rows = []
     for p in images:
         rel = p.relative_to(base)
@@ -129,12 +165,27 @@ def _scan_yolo(base: Path, images: list[Path], others: list[str]) -> ScanResult:
             parts[idx] = "labels"
             label_path = base.joinpath(*parts).with_suffix(".txt")
         boxes = _read_yolo_labels(label_path) if label_path is not None and label_path.is_file() else []
-        rows.append({"relative_path": rel.as_posix(), "publisher_split": split, "raw_label": None,
-                     "n_boxes": len(boxes), "label_file": label_path.relative_to(base).as_posix() if label_path and label_path.is_file() else None})
+        rows.append(
+            {
+                "relative_path": rel.as_posix(),
+                "publisher_split": split,
+                "raw_label": None,
+                "n_boxes": len(boxes),
+                "label_file": label_path.relative_to(base).as_posix()
+                if label_path and label_path.is_file()
+                else None,
+            }
+        )
         for k, (cls, box) in enumerate(boxes):
-            regions.append({"relative_path": rel.as_posix(), "roi_id": k, "class_index": cls,
-                            "raw_label": names[cls] if 0 <= cls < len(names) else f"class_{cls}",
-                            "bbox_norm_cxcywh": box})
+            regions.append(
+                {
+                    "relative_path": rel.as_posix(),
+                    "roi_id": k,
+                    "class_index": cls,
+                    "raw_label": names[cls] if 0 <= cls < len(names) else f"class_{cls}",
+                    "bbox_norm_cxcywh": box,
+                }
+            )
     files = pd.DataFrame(rows)
     # Detection exports have no single image label; images with exactly one distinct box label are noted.
     reg = pd.DataFrame(regions)
@@ -223,11 +274,20 @@ def inspect_file(path: Path, min_side_px: int = 32) -> dict:
             rgb = np.asarray(im.convert("RGB"))
         h, w = rgb.shape[:2]
         gray = np.asarray(Image.fromarray(rgb).convert("L"))
-        rec.update(readable=True, width_px=int(w), height_px=int(h),
-                   mean_r=float(rgb[..., 0].mean()), mean_g=float(rgb[..., 1].mean()), mean_b=float(rgb[..., 2].mean()),
-                   gray_mean=float(gray.mean()), gray_std=float(gray.std()),
-                   dark_fraction=float((gray <= 20).mean()), bright_fraction=float((gray >= 245).mean()),
-                   dhash_variants=dihedral_dhashes(gray), thumb=thumbnail(gray))
+        rec.update(
+            readable=True,
+            width_px=int(w),
+            height_px=int(h),
+            mean_r=float(rgb[..., 0].mean()),
+            mean_g=float(rgb[..., 1].mean()),
+            mean_b=float(rgb[..., 2].mean()),
+            gray_mean=float(gray.mean()),
+            gray_std=float(gray.std()),
+            dark_fraction=float((gray <= 20).mean()),
+            bright_fraction=float((gray >= 245).mean()),
+            dhash_variants=dihedral_dhashes(gray),
+            thumb=thumbnail(gray),
+        )
         rec["too_small"] = bool(min(h, w) < min_side_px)
     except Exception as exc:  # noqa: BLE001 - every decode failure is recorded per file, not hidden
         rec["error"] = f"{type(exc).__name__}: {exc}"
@@ -235,6 +295,7 @@ def inspect_file(path: Path, min_side_px: int = 32) -> dict:
 
 
 def inspect_files(base: Path, rel_paths: list[str], min_side_px: int = 32, workers: int = 8) -> pd.DataFrame:
+    """Run ``inspect_file`` on every relative path (threaded) and return one row per file."""
     paths = [base / r for r in rel_paths]
     with ThreadPoolExecutor(max_workers=workers) as ex:
         recs = list(ex.map(lambda p: inspect_file(p, min_side_px), paths))
@@ -251,12 +312,14 @@ class _UnionFind:
         self.parent = np.arange(n)
 
     def find(self, i: int) -> int:
+        """Return the representative (root) of ``i``'s group, compressing the path on the way."""
         while self.parent[i] != i:
             self.parent[i] = self.parent[self.parent[i]]
             i = self.parent[i]
         return int(i)
 
     def union(self, a: int, b: int) -> None:
+        """Merge the groups that contain ``a`` and ``b``."""
         ra, rb = self.find(a), self.find(b)
         if ra != rb:
             self.parent[max(ra, rb)] = min(ra, rb)
@@ -271,7 +334,7 @@ def near_duplicate_pairs(variant_hashes: np.ndarray, threshold: int, chunk: int 
     base = variant_hashes[:, 0]
     pairs = []
     for s in range(0, n, chunk):
-        b = base[s:s + chunk, None, None]
+        b = base[s : s + chunk, None, None]
         dist = np.bitwise_count(np.bitwise_xor(b, variant_hashes[None, :, :])).min(axis=2)
         ii, jj = np.nonzero(dist <= threshold)
         ii = ii + s
@@ -281,8 +344,13 @@ def near_duplicate_pairs(variant_hashes: np.ndarray, threshold: int, chunk: int 
     return np.concatenate(pairs) if pairs else np.zeros((0, 2), dtype=int)
 
 
-def duplicate_groups(file_hashes: list[str | None], variant_hashes: np.ndarray | None, threshold: int,
-                     thumbs: list[np.ndarray] | None = None, min_corr: float = 0.9) -> tuple[np.ndarray, dict]:
+def duplicate_groups(
+    file_hashes: list[str | None],
+    variant_hashes: np.ndarray | None,
+    threshold: int,
+    thumbs: list[np.ndarray] | None = None,
+    min_corr: float = 0.9,
+) -> tuple[np.ndarray, dict]:
     """Union exact (SHA-256) and near duplicates. Returns group index per row and stats.
 
     A near-duplicate needs a dHash match (<= ``threshold`` bits under some flip/rotation) AND,
@@ -314,16 +382,23 @@ def duplicate_groups(file_hashes: list[str | None], variant_hashes: np.ndarray |
     roots = np.array([uf.find(i) for i in range(n)])
     _, group_idx = np.unique(roots, return_inverse=True)
     sizes = np.bincount(group_idx)
-    return group_idx, {"exact_duplicate_files": n_exact, "dhash_candidate_pairs": n_candidates,
-                       "near_duplicate_pairs": n_near, "verification_min_corr": min_corr if thumbs is not None else None,
-                       "n_groups": int(len(sizes)), "n_groups_size_gt1": int((sizes > 1).sum()),
-                       "largest_group": int(sizes.max()) if len(sizes) else 0}
+    return group_idx, {
+        "exact_duplicate_files": n_exact,
+        "dhash_candidate_pairs": n_candidates,
+        "near_duplicate_pairs": n_near,
+        "verification_min_corr": min_corr if thumbs is not None else None,
+        "n_groups": int(len(sizes)),
+        "n_groups_size_gt1": int((sizes > 1).sum()),
+        "largest_group": int(sizes.max()) if len(sizes) else 0,
+    }
 
 
 # --------------------------------------------------------------------------- splits
 
 
-def grouped_stratified_split(groups: pd.Series, labels: pd.Series, fractions=(0.7, 0.15, 0.15), seed: int = 42) -> pd.Series:
+def grouped_stratified_split(
+    groups: pd.Series, labels: pd.Series, fractions=(0.7, 0.15, 0.15), seed: int = 42
+) -> pd.Series:
     """Assign each *group* to train/validation/test, stratified by the group's label.
 
     Groups are shuffled per class and allocated greedily so the image counts per
@@ -355,21 +430,27 @@ def assign_splits(df: pd.DataFrame, policy: str, fractions, seed: int) -> tuple[
     usable = df["exclusion_reason"].isna()
     report: dict = {"policy": policy}
     pub = df.loc[usable, "publisher_split"]
-    crossing = (df.loc[usable].groupby("duplicate_group_id")["publisher_split"].nunique() > 1)
+    crossing = df.loc[usable].groupby("duplicate_group_id")["publisher_split"].nunique() > 1
     report["groups_crossing_publisher_split"] = int(crossing.sum())
-    report["images_in_crossing_groups"] = int(df.loc[usable, "duplicate_group_id"].isin(crossing.index[crossing]).sum())
+    report["images_in_crossing_groups"] = int(
+        df.loc[usable, "duplicate_group_id"].isin(crossing.index[crossing]).sum()
+    )
     has_pub = pub.notna().all() and len(pub) > 0
     split = pd.Series(None, index=df.index, dtype=object)
     if policy == "publisher_if_clean" and has_pub and report["groups_crossing_publisher_split"] == 0:
         split.loc[usable] = pub
         report["decision"] = "publisher split preserved (no duplicate group crosses splits)"
     else:
-        split.loc[usable] = grouped_stratified_split(df.loc[usable, "duplicate_group_id"], df.loc[usable, "canonical_label"],
-                                                     fractions, seed)
-        report["decision"] = ("re-split by independent duplicate group: " +
-                              ("publisher split absent" if not has_pub else
-                               f"{report['groups_crossing_publisher_split']} duplicate groups cross the publisher split"
-                               if report["groups_crossing_publisher_split"] else "policy requested regrouping"))
+        split.loc[usable] = grouped_stratified_split(
+            df.loc[usable, "duplicate_group_id"], df.loc[usable, "canonical_label"], fractions, seed
+        )
+        report["decision"] = "re-split by independent duplicate group: " + (
+            "publisher split absent"
+            if not has_pub
+            else f"{report['groups_crossing_publisher_split']} duplicate groups cross the publisher split"
+            if report["groups_crossing_publisher_split"]
+            else "policy requested regrouping"
+        )
     split.loc[~usable] = "excluded"
     return split, report
 
@@ -394,7 +475,9 @@ def read_source_info(base: Path) -> dict:
     return json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
 
 
-def build_manifest(cfg: dict, source_name: str, workers: int = 8, progress: bool = True) -> tuple[pd.DataFrame, dict]:
+def build_manifest(
+    cfg: dict, source_name: str, workers: int = 8, progress: bool = True
+) -> tuple[pd.DataFrame, dict]:
     """Scan, inspect, deduplicate and split one source. Returns (manifest, audit report)."""
     root = Path(cfg["root"])
     scfg = cfg["datasets"]["sources"][source_name]
@@ -422,13 +505,18 @@ def build_manifest(cfg: dict, source_name: str, workers: int = 8, progress: bool
         if isinstance(v, list):
             variants[i] = np.array(v, dtype=np.uint64)
     idx = np.nonzero(readable)[0]
-    gidx, dup_stats = duplicate_groups([df["file_hash"].iloc[i] for i in idx], variants[idx],
-                                       int(cfg["classification"]["near_duplicate_hamming"]),
-                                       thumbs=[df["thumb"].iloc[i] for i in idx],
-                                       min_corr=float(cfg["classification"].get("near_duplicate_min_corr", 0.9)))
+    gidx, dup_stats = duplicate_groups(
+        [df["file_hash"].iloc[i] for i in idx],
+        variants[idx],
+        int(cfg["classification"]["near_duplicate_hamming"]),
+        thumbs=[df["thumb"].iloc[i] for i in idx],
+        min_corr=float(cfg["classification"].get("near_duplicate_min_corr", 0.9)),
+    )
     df["duplicate_group_id"] = None
     df.loc[df.index[idx], "duplicate_group_id"] = [f"{source_name}_g{g:05d}" for g in gidx]
-    df.loc[df["duplicate_group_id"].isna(), "duplicate_group_id"] = [f"{source_name}_unreadable_{i}" for i in range(int(df["duplicate_group_id"].isna().sum()))]
+    df.loc[df["duplicate_group_id"].isna(), "duplicate_group_id"] = [
+        f"{source_name}_unreadable_{i}" for i in range(int(df["duplicate_group_id"].isna().sum()))
+    ]
 
     df["dataset_source"] = source_name
     df["dataset_version"] = info.get("version", scfg.get("version"))
@@ -453,10 +541,16 @@ def build_manifest(cfg: dict, source_name: str, workers: int = 8, progress: bool
 
     # Label conflicts inside one duplicate group mean the same picture carries two labels.
     if scan.layout != "yolo":
-        conflict = df[df["exclusion_reason"].isna()].groupby("duplicate_group_id")["canonical_label"].nunique()
+        conflict = (
+            df[df["exclusion_reason"].isna()].groupby("duplicate_group_id")["canonical_label"].nunique()
+        )
         bad = conflict.index[conflict > 1]
-        df.loc[df["duplicate_group_id"].isin(bad) & df["exclusion_reason"].isna(), "exclusion_reason"] = "duplicate_group_label_conflict"
-        split, split_report = assign_splits(df, cfg["classification"]["split_policy"], cfg["classification"]["split_fractions"], cfg["seed"])
+        df.loc[df["duplicate_group_id"].isin(bad) & df["exclusion_reason"].isna(), "exclusion_reason"] = (
+            "duplicate_group_label_conflict"
+        )
+        split, split_report = assign_splits(
+            df, cfg["classification"]["split_policy"], cfg["classification"]["split_fractions"], cfg["seed"]
+        )
         df["split"] = split
     else:
         df["split"] = None
@@ -467,8 +561,11 @@ def build_manifest(cfg: dict, source_name: str, workers: int = 8, progress: bool
         region_df = _region_rows(df, scan.regions, source_name)
         region_df["exclusion_reason"] = None
         split, split_report = assign_splits(
-            region_df.assign(publisher_split=region_df["publisher_split"]), cfg["classification"]["split_policy"],
-            cfg["classification"]["split_fractions"], cfg["seed"])
+            region_df.assign(publisher_split=region_df["publisher_split"]),
+            cfg["classification"]["split_policy"],
+            cfg["classification"]["split_fractions"],
+            cfg["seed"],
+        )
         region_df["split"] = split
         # Every crop of one original lives in that original's split (enforced by shared duplicate_group_id).
         parent_split = region_df.groupby("parent_image_id")["split"].first()
@@ -487,7 +584,9 @@ def build_manifest(cfg: dict, source_name: str, workers: int = 8, progress: bool
         "other_files_examples": scan.other_files[:10],
         "class_names_raw": scan.class_names,
         "n_unreadable": int((~df["readable"].fillna(False)).sum()),
-        "unreadable_examples": df.loc[~df["readable"].fillna(False), ["relative_path", "error"]].head(10).to_dict("records"),
+        "unreadable_examples": df.loc[~df["readable"].fillna(False), ["relative_path", "error"]]
+        .head(10)
+        .to_dict("records"),
         "n_missing_label": int((df["exclusion_reason"] == "missing_label").sum()),
         "n_label_conflict": int((df["exclusion_reason"] == "duplicate_group_label_conflict").sum()),
         "duplicates": dup_stats,
@@ -511,17 +610,38 @@ def _region_rows(images: pd.DataFrame, regions: pd.DataFrame, source: str) -> pd
         x1, y1 = int(min(W, np.ceil((cx + bw / 2) * W))), int(min(H, np.ceil((cy + bh / 2) * H)))
         if x1 - x0 < 2 or y1 - y0 < 2:
             continue
-        rows.append({
-            "image_id": f"{p['image_id']}_r{r.roi_id}", "original_id": p["image_id"], "relative_path": r.relative_path,
-            "dataset_source": source, "dataset_version": p["dataset_version"], "license": p["license"],
-            "download_date": p["download_date"], "raw_label": r.raw_label, "canonical_label": canonical_label(r.raw_label),
-            "task_type": "region_classification", "width_px": x1 - x0, "height_px": y1 - y0, "channels": p["channels"],
-            "file_hash": p["file_hash"], "duplicate_group_id": p["duplicate_group_id"], "patient_id": None,
-            "publisher_split": p["publisher_split"], "roi_id": int(r.roi_id), "parent_image_id": p["image_id"],
-            "bbox_xyxy": [x0, y0, x1, y1], "has_hair_instance_labels": False, "has_count_labels": False,
-            "has_segmentation_masks": False, "pixel_scale_um_per_px": None, "stereo_pair_id": None,
-            "calibration_id": None, "readable": True, "notes": "ground-truth box crop (annotated-region classification)",
-        })
+        rows.append(
+            {
+                "image_id": f"{p['image_id']}_r{r.roi_id}",
+                "original_id": p["image_id"],
+                "relative_path": r.relative_path,
+                "dataset_source": source,
+                "dataset_version": p["dataset_version"],
+                "license": p["license"],
+                "download_date": p["download_date"],
+                "raw_label": r.raw_label,
+                "canonical_label": canonical_label(r.raw_label),
+                "task_type": "region_classification",
+                "width_px": x1 - x0,
+                "height_px": y1 - y0,
+                "channels": p["channels"],
+                "file_hash": p["file_hash"],
+                "duplicate_group_id": p["duplicate_group_id"],
+                "patient_id": None,
+                "publisher_split": p["publisher_split"],
+                "roi_id": int(r.roi_id),
+                "parent_image_id": p["image_id"],
+                "bbox_xyxy": [x0, y0, x1, y1],
+                "has_hair_instance_labels": False,
+                "has_count_labels": False,
+                "has_segmentation_masks": False,
+                "pixel_scale_um_per_px": None,
+                "stereo_pair_id": None,
+                "calibration_id": None,
+                "readable": True,
+                "notes": "ground-truth box crop (annotated-region classification)",
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -529,7 +649,9 @@ def save_manifest(manifest: pd.DataFrame, report: dict, out_dir: Path) -> dict[s
     """Write the manifest CSV (spec columns first), the split manifest and the audit report JSON."""
     out_dir.mkdir(parents=True, exist_ok=True)
     src = report["source"]
-    cols = MANIFEST_COLUMNS + [c for c in manifest.columns if c not in MANIFEST_COLUMNS and c not in ("dhash_variants", "thumb")]
+    cols = MANIFEST_COLUMNS + [
+        c for c in manifest.columns if c not in MANIFEST_COLUMNS and c not in ("dhash_variants", "thumb")
+    ]
     m = manifest.copy()
     m["bbox_xyxy"] = m["bbox_xyxy"].map(lambda v: json.dumps(v) if isinstance(v, list) else None)
     paths = {
@@ -538,12 +660,15 @@ def save_manifest(manifest: pd.DataFrame, report: dict, out_dir: Path) -> dict[s
         "report": out_dir / f"{src}_audit_report.json",
     }
     m[cols].to_csv(paths["manifest"], index=False)
-    m[["image_id", "original_id", "duplicate_group_id", "canonical_label", "split"]].to_csv(paths["splits"], index=False)
+    m[["image_id", "original_id", "duplicate_group_id", "canonical_label", "split"]].to_csv(
+        paths["splits"], index=False
+    )
     paths["report"].write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
     return paths
 
 
 def load_manifest(path: Path) -> pd.DataFrame:
+    """Read a manifest CSV written by ``save_manifest`` (``bbox_xyxy`` is decoded back to lists)."""
     df = pd.read_csv(path)
     df["bbox_xyxy"] = df["bbox_xyxy"].map(lambda v: json.loads(v) if isinstance(v, str) else None)
     return df
@@ -552,8 +677,12 @@ def load_manifest(path: Path) -> pd.DataFrame:
 def split_count_table(manifest: pd.DataFrame) -> pd.DataFrame:
     """Images and independent groups per class and split (what the classification report must state)."""
     m = manifest[manifest["split"].isin(SPLITS)]
-    imgs = m.pivot_table(index="canonical_label", columns="split", values="image_id", aggfunc="count", fill_value=0)
-    grps = m.pivot_table(index="canonical_label", columns="split", values="duplicate_group_id", aggfunc="nunique", fill_value=0)
+    imgs = m.pivot_table(
+        index="canonical_label", columns="split", values="image_id", aggfunc="count", fill_value=0
+    )
+    grps = m.pivot_table(
+        index="canonical_label", columns="split", values="duplicate_group_id", aggfunc="nunique", fill_value=0
+    )
     imgs.columns = [f"{c}_images" for c in imgs.columns]
     grps.columns = [f"{c}_groups" for c in grps.columns]
     return imgs.join(grps)
@@ -562,18 +691,42 @@ def split_count_table(manifest: pd.DataFrame) -> pd.DataFrame:
 def capability_audit(manifest: pd.DataFrame | None) -> pd.DataFrame:
     """What the data can and cannot support (spec Sections 1.3, 15.3)."""
     have = manifest is not None and len(manifest) > 0
+
     def any_true(col):
+        """True if any manifest row has a truthy value in ``col``."""
         return bool(have and manifest[col].fillna(False).astype(bool).any())
+
     rows = [
-        ("condition classification labels", "available" if have and manifest["canonical_label"].notna().any() else "unavailable",
-         "publisher folder/box labels" if have else "dataset not downloaded"),
-        ("independent patient identity", "unavailable", "no patient_id supplied by the source; grouping is by duplicate cluster"),
-        ("hair instance / count labels", "available" if any_true("has_count_labels") else "unavailable",
-         "no per-hair annotations in the export" if have else "dataset not downloaded"),
-        ("segmentation masks", "available" if any_true("has_segmentation_masks") else "unavailable", "none in export"),
+        (
+            "condition classification labels",
+            "available" if have and manifest["canonical_label"].notna().any() else "unavailable",
+            "publisher folder/box labels" if have else "dataset not downloaded",
+        ),
+        (
+            "independent patient identity",
+            "unavailable",
+            "no patient_id supplied by the source; grouping is by duplicate cluster",
+        ),
+        (
+            "hair instance / count labels",
+            "available" if any_true("has_count_labels") else "unavailable",
+            "no per-hair annotations in the export" if have else "dataset not downloaded",
+        ),
+        (
+            "segmentation masks",
+            "available" if any_true("has_segmentation_masks") else "unavailable",
+            "none in export",
+        ),
         ("physical pixel scale (um/px)", "unavailable", "no documented scale; widths stay in pixels"),
-        ("calibrated stereo pairs", "unavailable", "no verified pair/calibration; synthetic stereo demo only"),
-        ("face-containing images (Haar positive case)", "to be checked in notebook 07",
-         "requires running the detector over the downloaded images"),
+        (
+            "calibrated stereo pairs",
+            "unavailable",
+            "no verified pair/calibration; synthetic stereo demo only",
+        ),
+        (
+            "face-containing images (Haar positive case)",
+            "to be checked in notebook 07",
+            "requires running the detector over the downloaded images",
+        ),
     ]
     return pd.DataFrame(rows, columns=["capability", "status", "reason"])

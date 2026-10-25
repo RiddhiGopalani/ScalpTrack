@@ -32,7 +32,9 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--image", type=Path, help="input image path")
-    src.add_argument("--synthetic-demo", action="store_true", help="analyze a generated, labelled synthetic close-up")
+    src.add_argument(
+        "--synthetic-demo", action="store_true", help="analyze a generated, labelled synthetic close-up"
+    )
     ap.add_argument("--roi", type=int, nargs=4, metavar=("X0", "Y0", "X1", "Y1"))
     ap.add_argument("--model", type=Path, help="model bundle (.joblib)")
     ap.add_argument("--pixel-scale-um", type=float, help="documented um/px scale (requires --scale-source)")
@@ -42,7 +44,9 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
 
-    model_path = args.model or project_path(cfg, "models", cfg["datasets"]["primary"], "baseline_bundle.joblib")
+    model_path = args.model or project_path(
+        cfg, "models", cfg["datasets"]["primary"], "baseline_bundle.joblib"
+    )
     try:
         bundle = clf.load_bundle(model_path)
         print(f"[pipeline] model: {bundle['model_id']} (provenance: {bundle['data_provenance']})")
@@ -52,21 +56,37 @@ def main(argv=None) -> int:
 
     if args.synthetic_demo:
         mask = syn.curved_shafts(7, 4.0, size=200, seed=cfg["seed"])["mask"]
-        source, provenance, image_id = syn.render_hair_image(mask, seed=cfg["seed"]), "synthetic", "synthetic_closeup"
+        source, provenance, image_id = (
+            syn.render_hair_image(mask, seed=cfg["seed"]),
+            "synthetic",
+            "synthetic_closeup",
+        )
     else:
         source, provenance, image_id = args.image, "real", None
 
-    r = analyze_image(source, tuple(args.roi) if args.roi else None, bundle, cfg, provenance=provenance,
-                      image_id=image_id, pixel_scale_um_per_px=args.pixel_scale_um, scale_source=args.scale_source)
+    r = analyze_image(
+        source,
+        tuple(args.roi) if args.roi else None,
+        bundle,
+        cfg,
+        provenance=provenance,
+        image_id=image_id,
+        pixel_scale_um_per_px=args.pixel_scale_um,
+        scale_source=args.scale_source,
+    )
     if r.get("status") == "failed":
         print(f"[pipeline] FAILED: {r['error']}", file=sys.stderr)
         return 1
-    out = args.out or project_path(cfg, "results", "pipeline" if provenance == "real" else "pipeline_synthetic_demo")
+    out = args.out or project_path(
+        cfg, "results", "pipeline" if provenance == "real" else "pipeline_synthetic_demo"
+    )
     badges = capability_badges(r)
     fig = result_panel(r, badges, f"ScalpTrack analysis - {r['image_id']}")
     if provenance == "synthetic":
         synthetic_banner(fig)
-    paths = export_result(r, out, r["image_id"] if provenance == "real" else f"SYNTHETIC_{r['image_id']}", {"panel": fig})
+    paths = export_result(
+        r, out, r["image_id"] if provenance == "real" else f"SYNTHETIC_{r['image_id']}", {"panel": fig}
+    )
     for b in badges:
         print(f"  [{b['status']:>14s}] {b['capability']}: {b['reason']}")
     print(json.dumps(paths, indent=2))

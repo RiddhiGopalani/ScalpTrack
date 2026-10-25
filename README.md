@@ -9,7 +9,8 @@ measurement reports its units and validity status.
 > classifier. Physical widths (µm), follicle density and real scalp 3-D are reported **only** when the
 > required scale, labels or calibration exist. In the linked public data they do not.
 
-The authoritative specification is [`fcv_miniProj.pdf`](fcv_miniProj.pdf).
+The authoritative specification is the course PDF `fcv_miniProj.pdf`. It is kept out of this repository;
+the section numbers quoted in the code and docs (for example "spec Section 12") refer to it.
 
 ---
 
@@ -17,7 +18,7 @@ The authoritative specification is [`fcv_miniProj.pdf`](fcv_miniProj.pdf).
 
 | Item | Status |
 |---|---|
-| Automated tests | **147 passed** (`pytest`, Windows 11, Python 3.13.7) |
+| Automated tests | **151 passed** (`pytest`, Windows 11, Python 3.13.7) |
 | Notebooks 00–08 | **All executed** top-to-bottom in fresh kernels, 0 errors |
 | Real dataset | **Not downloaded.** Kaggle needs your account (see [docs/dataset_setup.md](docs/dataset_setup.md)). Only the public file listing was recorded: 10 classes × 1,200 jpg |
 | Real-data code paths | Executed end to end on a throwaway toy export of generated images in the Kaggle layout. That run proves the code paths only, and its outputs were discarded |
@@ -48,11 +49,34 @@ The full requirement-by-requirement mapping is in [docs/experiment_mapping.md](d
 
 ---
 
+## How to read this project
+
+If you are new to the code, read it in this order. Each step builds on the one before.
+
+1. **`configs/default.yaml`**: every number the project uses (thresholds, kernel sizes, seeds, paths).
+   Nothing is hard-coded elsewhere, so this file says what the experiments *do*.
+2. **`src/scalptrack/schema.py`**: the six result statuses (`ok`, `exploratory`, `synthetic_demo`,
+   `unavailable`, `failed`, `not_requested`). Every output is labelled with one of them.
+3. **The lab modules, in lab order**: `io_utils` (Lab 1) → `preprocessing` (Labs 2, 4) → `edges` (Lab 3) →
+   `segmentation` (Lab 5) → `texture` and `pyramids` (Labs 6, 7) → `stereo` (Lab 8) → `face_roi` (Lab 9).
+   Each module starts with a docstring naming its lab and spec section.
+4. **The project logic**: `features` (classifier inputs) → `measurements` (count and width) →
+   `audit` (dataset checks and splits) → `classification` and `experiments` (training and evaluation).
+5. **`pipeline.analyze_image`**: the integrated analyzer (Lab 10). It is written as eight numbered steps
+   that call the modules above.
+6. **The notebooks**: they only *present* results. All computation is in the package, so the notebooks
+   read as experiment reports. Their sources live in `scripts/nbbuild/`. Edit those files, then run
+   `python scripts/build_notebooks.py` and `python scripts/run_notebooks.py`.
+
+Supporting modules: `synthetic` (labelled test fixtures with known truth), `demo_data` (which images the
+notebooks show), `viz` (plots) and `exports` (JSON/CSV/PNG).
+
+---
+
 ## Repository structure
 
 ```
 ScalpTrack/
-├── fcv_miniProj.pdf               specification (source of truth)
 ├── README.md  requirements.txt  requirements-training.txt  pyproject.toml  .gitignore
 ├── configs/default.yaml           every parameter, seed, path and source (no absolute paths)
 ├── src/scalptrack/                reusable package (all computation lives here)
@@ -82,12 +106,12 @@ ScalpTrack/
 │   ├── download_dataset.py  audit_dataset.py  train_classifier.py  run_pipeline.py
 │   ├── build_notebooks.py  run_notebooks.py  check_notebooks.py  generate_report.py
 │   └── nbbuild/             notebook source definitions
-├── tests/                  147 pytest tests on tiny synthetic fixtures (no download needed)
+├── tests/                  151 pytest tests on tiny synthetic fixtures (no download needed)
 ├── data/{raw,manifests,derived,synthetic}/   see data/README.md (raw data is git-ignored)
 ├── models/                 saved bundles (models/synthetic_demo/ = software check only)
 ├── outputs/{figures,results,demo}/            real/ and synthetic/ kept apart, SYNTHETIC_ prefixes
 ├── reports/capability_status.md               generated from evidence on disk
-└── docs/  experiment_mapping.md  dataset_setup.md  limitations.md
+└── docs/  experiment_mapping.md  dataset_setup.md  limitations.md  member_c_migration.md
 ```
 
 ---
@@ -209,7 +233,7 @@ python scripts/generate_report.py --run-tests
 
 ## What was verified, and what still needs you
 
-**Verified here:** the 147 unit and integration tests; execution of all nine notebooks; every CLI script,
+**Verified here:** the 151 unit and integration tests; execution of all nine notebooks; every CLI script,
 including the clean exit code 2 when data is missing; and the real-data branches of every notebook and
 script, run on a toy export of generated images.
 
@@ -224,7 +248,8 @@ script, run on a toy export of generated images.
 4. Ask faculty whether synthetic-only stereo (Lab 8) and a data-limited Haar positive case (Lab 9) are
    acceptable.
 
-Known limitations are in [docs/limitations.md](docs/limitations.md).
+Known limitations are in [docs/limitations.md](docs/limitations.md). How the standalone Member C prototype was
+folded into this package is recorded in [docs/member_c_migration.md](docs/member_c_migration.md).
 
 ---
 

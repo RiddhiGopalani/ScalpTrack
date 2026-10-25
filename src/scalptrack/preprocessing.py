@@ -20,6 +20,7 @@ BORDERS = {
 
 
 def border_flag(config: dict | None) -> int:
+    """OpenCV border constant for the configured boundary policy (default reflect-101)."""
     name = (config or {}).get("filters", {}).get("border", "reflect101")
     if name not in BORDERS:
         raise ValueError(f"Unknown border policy '{name}'; choose from {sorted(BORDERS)}")
@@ -73,10 +74,16 @@ def channel_stack(rgb: np.ndarray) -> dict[str, np.ndarray]:
     hsv = to_hsv(rgb)
     lab = to_lab_float(rgb)
     return {
-        "R": rgb[..., 0], "G": rgb[..., 1], "B": rgb[..., 2],
+        "R": rgb[..., 0],
+        "G": rgb[..., 1],
+        "B": rgb[..., 2],
         "Gray": to_gray(rgb),
-        "H (deg)": hue_degrees(hsv), "S": hsv[..., 1], "V": hsv[..., 2],
-        "L* (0-100)": lab[..., 0], "a* (signed)": lab[..., 1], "b* (signed)": lab[..., 2],
+        "H (deg)": hue_degrees(hsv),
+        "S": hsv[..., 1],
+        "V": hsv[..., 2],
+        "L* (0-100)": lab[..., 0],
+        "a* (signed)": lab[..., 1],
+        "b* (signed)": lab[..., 2],
     }
 
 
@@ -87,7 +94,10 @@ def circular_hue_stats(hue_deg: np.ndarray, weights: np.ndarray | None = None) -
     if wts.sum() == 0:
         return {"hue_mean_deg": float("nan"), "hue_resultant": 0.0}
     c, s = np.sum(wts * np.cos(rad)) / wts.sum(), np.sum(wts * np.sin(rad)) / wts.sum()
-    return {"hue_mean_deg": float(np.rad2deg(np.arctan2(s, c)) % 360.0), "hue_resultant": float(np.hypot(c, s))}
+    return {
+        "hue_mean_deg": float(np.rad2deg(np.arctan2(s, c)) % 360.0),
+        "hue_resultant": float(np.hypot(c, s)),
+    }
 
 
 def patch_statistics(channel: np.ndarray, mask: np.ndarray | None = None) -> dict[str, float]:
@@ -97,19 +107,30 @@ def patch_statistics(channel: np.ndarray, mask: np.ndarray | None = None) -> dic
     if vals.size == 0:
         return {k: float("nan") for k in ("mean", "std", "p05", "p25", "p50", "p75", "p95")}
     p = np.percentile(vals, [5, 25, 50, 75, 95])
-    return {"mean": float(vals.mean()), "std": float(vals.std()),
-            "p05": float(p[0]), "p25": float(p[1]), "p50": float(p[2]), "p75": float(p[3]), "p95": float(p[4])}
+    return {
+        "mean": float(vals.mean()),
+        "std": float(vals.std()),
+        "p05": float(p[0]),
+        "p25": float(p[1]),
+        "p50": float(p[2]),
+        "p75": float(p[3]),
+        "p95": float(p[4]),
+    }
 
 
 # --------------------------------------------------------------------------- filters
 
 
 def mean_filter(gray: np.ndarray, ksize: int, border: int = cv2.BORDER_REFLECT_101) -> np.ndarray:
+    """Box (mean) filter with an odd ``ksize`` x ``ksize`` kernel."""
     _check_odd(ksize, "mean kernel")
     return cv2.blur(gray, (ksize, ksize), borderType=border)
 
 
-def gaussian_filter(gray: np.ndarray, ksize: int, sigma: float, border: int = cv2.BORDER_REFLECT_101) -> np.ndarray:
+def gaussian_filter(
+    gray: np.ndarray, ksize: int, sigma: float, border: int = cv2.BORDER_REFLECT_101
+) -> np.ndarray:
+    """Gaussian blur with an odd kernel and explicit sigma."""
     _check_odd(ksize, "Gaussian kernel")
     return cv2.GaussianBlur(gray, (ksize, ksize), sigmaX=sigma, sigmaY=sigma, borderType=border)
 
@@ -120,8 +141,9 @@ def median_filter(gray: np.ndarray, ksize: int) -> np.ndarray:
     return cv2.medianBlur(gray, ksize)
 
 
-def bilateral_filter(gray: np.ndarray, d: int, sigma_color: float, sigma_space: float,
-                     border: int = cv2.BORDER_REFLECT_101) -> np.ndarray:
+def bilateral_filter(
+    gray: np.ndarray, d: int, sigma_color: float, sigma_space: float, border: int = cv2.BORDER_REFLECT_101
+) -> np.ndarray:
     """Edge-preserving bilateral filter (extra comparison beyond the Lab 2 requirement)."""
     return cv2.bilateralFilter(gray, d, sigma_color, sigma_space, borderType=border)
 
@@ -131,8 +153,9 @@ def signed_laplacian(gray: np.ndarray, ksize: int = 1, border: int = cv2.BORDER_
     return cv2.Laplacian(gray.astype(np.float64), cv2.CV_64F, ksize=ksize, borderType=border)
 
 
-def laplacian_sharpen(gray: np.ndarray, alpha: float, ksize: int = 1,
-                      border: int = cv2.BORDER_REFLECT_101) -> np.ndarray:
+def laplacian_sharpen(
+    gray: np.ndarray, alpha: float, ksize: int = 1, border: int = cv2.BORDER_REFLECT_101
+) -> np.ndarray:
     """``I_sharp = I - alpha * Laplacian(I)`` in float64 (unclipped).
 
     With OpenCV's negative-centre convention, subtracting the Laplacian boosts
@@ -174,7 +197,9 @@ def compare_filters(gray_roi: np.ndarray, config: dict) -> dict[str, np.ndarray]
         bl = f["bilateral"]
         out["bilateral"] = bilateral_filter(gray_roi, bl["d"], bl["sigma_color"], bl["sigma_space"], b)
     out["laplacian"] = signed_laplacian(gray_roi, f["laplacian_ksize"], b)
-    out[f"sharpened_a{f['laplacian_alpha']}"] = laplacian_sharpen(gray_roi, f["laplacian_alpha"], f["laplacian_ksize"], b)
+    out[f"sharpened_a{f['laplacian_alpha']}"] = laplacian_sharpen(
+        gray_roi, f["laplacian_alpha"], f["laplacian_ksize"], b
+    )
     return out
 
 
@@ -186,6 +211,7 @@ def add_gaussian_noise(gray: np.ndarray, sigma: float, seed: int) -> np.ndarray:
 
 
 def mse(reference: np.ndarray, test: np.ndarray) -> float:
+    """Mean squared error between two equally shaped images, in intensity units squared."""
     if reference.shape != test.shape:
         raise ValueError(f"Shape mismatch {reference.shape} vs {test.shape}")
     d = reference.astype(np.float64) - test.astype(np.float64)

@@ -16,7 +16,9 @@ PREWITT_X = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]], dtype=np.float64)
 PREWITT_Y = PREWITT_X.T.copy()
 
 
-def sobel_gradients(gray: np.ndarray, ksize: int = 3, border: int = cv2.BORDER_REFLECT_101) -> dict[str, np.ndarray]:
+def sobel_gradients(
+    gray: np.ndarray, ksize: int = 3, border: int = cv2.BORDER_REFLECT_101
+) -> dict[str, np.ndarray]:
     """Signed float64 Sobel derivatives, magnitude and orientation (radians, [-pi, pi])."""
     g = gray.astype(np.float64)
     gx = cv2.Sobel(g, cv2.CV_64F, 1, 0, ksize=ksize, borderType=border)
@@ -46,7 +48,9 @@ def threshold_magnitude(magnitude: np.ndarray, fraction: float) -> np.ndarray:
     return magnitude >= fraction * peak
 
 
-def canny(gray: np.ndarray, low: float, high: float, blur_ksize: int = 5, blur_sigma: float = 1.2) -> np.ndarray:
+def canny(
+    gray: np.ndarray, low: float, high: float, blur_ksize: int = 5, blur_sigma: float = 1.2
+) -> np.ndarray:
     """Gaussian pre-smoothing followed by Canny; returns a boolean edge map."""
     if low >= high:
         raise ValueError(f"Canny low threshold ({low}) must be below high ({high})")
@@ -67,7 +71,9 @@ def edge_summary(edge_map: np.ndarray) -> dict[str, float]:
     }
 
 
-def orientation_histogram(gx: np.ndarray, gy: np.ndarray, bins: int = 4, weight_threshold: float = 0.0) -> np.ndarray:
+def orientation_histogram(
+    gx: np.ndarray, gy: np.ndarray, bins: int = 4, weight_threshold: float = 0.0
+) -> np.ndarray:
     """Magnitude-weighted histogram of *undirected* gradient orientation in [0, 180) degrees.
 
     Normalised to sum to 1 (all zeros when there is no gradient energy).

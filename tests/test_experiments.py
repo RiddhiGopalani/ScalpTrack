@@ -13,9 +13,18 @@ def _toy_cfg(root):
     cfg = load_config()
     cfg = {**cfg, "root": str(root)}
     cfg["paths"] = {k: v for k, v in cfg["paths"].items()}
-    cfg["datasets"] = {"primary": "toy", "sources": {"toy": {"dir": "data/raw/toy", "url": "local", "license": "test",
-                                                            "task_type": "image_classification",
-                                                            "layout": "split_class_folders"}}}
+    cfg["datasets"] = {
+        "primary": "toy",
+        "sources": {
+            "toy": {
+                "dir": "data/raw/toy",
+                "url": "local",
+                "license": "test",
+                "task_type": "image_classification",
+                "layout": "split_class_folders",
+            }
+        },
+    }
     return cfg
 
 

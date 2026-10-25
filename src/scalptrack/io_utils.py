@@ -9,9 +9,9 @@ Conventions (spec Section 6.1):
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 import cv2
 import numpy as np
@@ -45,6 +45,7 @@ class ImageRecord:
 
     @property
     def shape(self) -> tuple[int, ...]:
+        """Shape of the decoded RGB array."""
         return self.rgb.shape
 
 
@@ -66,6 +67,7 @@ def array_sha256(arr: np.ndarray) -> str:
 
 
 def is_supported(path: str | Path, extensions: Iterable[str] = DEFAULT_EXTENSIONS) -> bool:
+    """True if the file extension is one of ``extensions`` (case-insensitive)."""
     return Path(path).suffix.lower() in {e.lower() for e in extensions}
 
 
@@ -150,7 +152,9 @@ def save_rgb(path: str | Path, rgb: np.ndarray) -> Path:
     return path
 
 
-def validate_roi(image_shape: tuple[int, ...], roi: tuple[int, int, int, int] | None) -> tuple[int, int, int, int]:
+def validate_roi(
+    image_shape: tuple[int, ...], roi: tuple[int, int, int, int] | None
+) -> tuple[int, int, int, int]:
     """Bound-check a native-pixel ROI ``(x0, y0, x1, y1)``; ``None`` means the full image."""
     h, w = int(image_shape[0]), int(image_shape[1])
     if roi is None:
@@ -176,7 +180,9 @@ def crop_roi(image: np.ndarray, roi: tuple[int, int, int, int] | None) -> np.nda
     return image[y0:y1, x0:x1].copy()
 
 
-def resize_with_record(image: np.ndarray, size_wh: tuple[int, int], interpolation: int = cv2.INTER_AREA) -> tuple[np.ndarray, dict]:
+def resize_with_record(
+    image: np.ndarray, size_wh: tuple[int, int], interpolation: int = cv2.INTER_AREA
+) -> tuple[np.ndarray, dict]:
     """Resize and return the transform record needed to map measurements back to original pixels."""
     h, w = image.shape[:2]
     out = cv2.resize(image, size_wh, interpolation=interpolation)
@@ -207,7 +213,7 @@ def pixel_neighbourhood(image: np.ndarray, x: int, y: int, radius: int = 2) -> n
     h, w = image.shape[:2]
     if not (0 <= x < w and 0 <= y < h):
         raise ROIError(f"Pixel ({x}, {y}) outside {w}x{h} image")
-    return image[max(0, y - radius): y + radius + 1, max(0, x - radius): x + radius + 1].copy()
+    return image[max(0, y - radius) : y + radius + 1, max(0, x - radius) : x + radius + 1].copy()
 
 
 def describe_array(arr: np.ndarray) -> dict:

@@ -16,7 +16,7 @@ def code(text: str):
 
 
 def setup_cell(notebook_tag: str, extra_imports: str = "") -> object:
-    src = textwrap.dedent('''
+    src = textwrap.dedent("""
         %matplotlib inline
         from pathlib import Path
         import sys
@@ -42,20 +42,20 @@ def setup_cell(notebook_tag: str, extra_imports: str = "") -> object:
         plt.rcParams["figure.dpi"] = 90
         print("project root:", ROOT)
         print("config:", Path(cfg["config_path"]).name, "| seed:", cfg["seed"])
-    ''').strip()
+    """).strip()
     src = src.replace("@@EXTRA@@", textwrap.dedent(extra_imports).strip()).replace("@@TAG@@", notebook_tag)
     return nbformat.v4.new_code_cell(src)
 
 
 def status_cell() -> object:
-    return code('''
+    return code("""
         STATUS = dataset_status(cfg)
         print(STATUS["message"])
         REAL = STATUS["available"]
         DEV = development_images(cfg, n_per_class=1, max_total=4) if REAL else []
         SYN = synthetic_closeups(cfg)
         print(f"real development images loaded: {len(DEV)} (train/validation only) | synthetic fixtures: {list(SYN)}")
-    ''')
+    """)
 
 
 def save_cell_fn() -> object:
@@ -63,6 +63,7 @@ def save_cell_fn() -> object:
         def save_fig(fig, name, provenance):
             """Save under outputs/figures/<NB>/<real|synthetic>/ ; synthetic figures get a caption and SYNTHETIC_ prefix."""
             from scalptrack.viz import synthetic_banner
+
             if provenance == "synthetic":
                 synthetic_banner(fig)
             p = figure_path(cfg, NB, name, provenance)

@@ -29,8 +29,14 @@ def offset_for(distance: int, angle_deg: float) -> tuple[int, int]:
     return int(round(np.sin(a) * distance)), int(round(np.cos(a) * distance))
 
 
-def glcm(q: np.ndarray, distance: int, angle_deg: float, levels: int,
-         mask: np.ndarray | None = None, symmetric: bool = True) -> tuple[np.ndarray, int]:
+def glcm(
+    q: np.ndarray,
+    distance: int,
+    angle_deg: float,
+    levels: int,
+    mask: np.ndarray | None = None,
+    symmetric: bool = True,
+) -> tuple[np.ndarray, int]:
     """Normalised GLCM for one offset; returns ``(P, n_valid_pairs)``. ``P`` is all-zero if no pairs."""
     dy, dx = offset_for(distance, angle_deg)
     h, w = q.shape
@@ -40,10 +46,10 @@ def glcm(q: np.ndarray, distance: int, angle_deg: float, levels: int,
     if r1 <= r0 or c1 <= c0:
         return np.zeros((levels, levels)), 0
     a = q[r0:r1, c0:c1]
-    b = q[r0 + dy:r1 + dy, c0 + dx:c1 + dx]
+    b = q[r0 + dy : r1 + dy, c0 + dx : c1 + dx]
     if mask is not None:
         m = mask.astype(bool)
-        valid = m[r0:r1, c0:c1] & m[r0 + dy:r1 + dy, c0 + dx:c1 + dx]
+        valid = m[r0:r1, c0:c1] & m[r0 + dy : r1 + dy, c0 + dx : c1 + dx]
         a, b = a[valid], b[valid]
     else:
         a, b = a.ravel(), b.ravel()
@@ -78,8 +84,13 @@ def glcm_properties(P: np.ndarray) -> dict[str, float]:
     }
 
 
-def glcm_features(gray: np.ndarray, levels: int = 32, distances=(1, 2, 4), angles_deg=(0, 45, 90, 135),
-                  mask: np.ndarray | None = None) -> dict:
+def glcm_features(
+    gray: np.ndarray,
+    levels: int = 32,
+    distances=(1, 2, 4),
+    angles_deg=(0, 45, 90, 135),
+    mask: np.ndarray | None = None,
+) -> dict:
     """GLCM properties for every distance/angle, plus mean/std aggregation across offsets.
 
     Returns ``{"per_offset": [...], "aggregate": {"glcm_contrast_mean": ..., ...}}``.
@@ -98,9 +109,17 @@ def glcm_features(gray: np.ndarray, levels: int = 32, distances=(1, 2, 4), angle
         name = k if k.startswith("glcm_") else f"glcm_{k}"
         agg[f"{name}_mean"] = float(vals.mean()) if vals.size else float("nan")
         agg[f"{name}_std"] = float(vals.std()) if vals.size else float("nan")
-    return {"per_offset": rows, "aggregate": agg,
-            "settings": {"levels": levels, "distances": list(distances), "angles_deg": list(angles_deg),
-                         "symmetric": True, "masked": mask is not None}}
+    return {
+        "per_offset": rows,
+        "aggregate": agg,
+        "settings": {
+            "levels": levels,
+            "distances": list(distances),
+            "angles_deg": list(angles_deg),
+            "symmetric": True,
+            "masked": mask is not None,
+        },
+    }
 
 
 def histogram_entropy(gray: np.ndarray, bins: int = 256, mask: np.ndarray | None = None) -> float:
@@ -119,7 +138,9 @@ def histogram_entropy(gray: np.ndarray, bins: int = 256, mask: np.ndarray | None
     return float(-np.sum(p * np.log2(p)))
 
 
-def interior_patches(mask: np.ndarray, patch: int, stride: int | None = None) -> list[tuple[int, int, int, int]]:
+def interior_patches(
+    mask: np.ndarray, patch: int, stride: int | None = None
+) -> list[tuple[int, int, int, int]]:
     """Fully-valid square patches inside ``mask`` as ``(x0, y0, x1, y1)``: an alternative to masked GLCMs."""
     stride = stride or patch
     m = mask.astype(bool)

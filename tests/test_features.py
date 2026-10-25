@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 from skimage.feature import graycomatrix
 
-from scalptrack import features as ft, pyramids, texture
+from scalptrack import features as ft
+from scalptrack import pyramids, texture
 
 
 @pytest.mark.parametrize("d", [1, 2, 4])
@@ -34,13 +35,13 @@ def test_checkerboard_contrast():
 
 def test_masked_glcm_ignores_outside_pixels():
     g = np.full((20, 20), 200, np.uint8)
-    g[:, 10:] = 0              # "filled" region outside the mask
+    g[:, 10:] = 0  # "filled" region outside the mask
     mask = np.zeros_like(g, bool)
     mask[:, :10] = True
     masked = texture.glcm_features(g, 32, mask=mask)["aggregate"]
-    assert masked["glcm_contrast_mean"] == pytest.approx(0.0)   # only the uniform valid area
+    assert masked["glcm_contrast_mean"] == pytest.approx(0.0)  # only the uniform valid area
     unmasked = texture.glcm_features(g, 32)["aggregate"]
-    assert unmasked["glcm_contrast_mean"] > 0                    # artificial edge texture
+    assert unmasked["glcm_contrast_mean"] > 0  # artificial edge texture
 
 
 def test_empty_mask_gives_nan():
@@ -85,7 +86,7 @@ def test_feature_schema_fixed_and_finite(cfg, hair_rgb):
     f = ft.extract_features(hair_rgb, cfg)
     assert list(f) == ft.feature_names()
     assert all(np.isfinite(v) for v in f.values())
-    f2 = ft.extract_features(hair_rgb[:90, :70], cfg)   # different size -> same schema
+    f2 = ft.extract_features(hair_rgb[:90, :70], cfg)  # different size -> same schema
     assert list(f2) == list(f)
 
 
