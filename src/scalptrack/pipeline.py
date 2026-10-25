@@ -81,7 +81,7 @@ def analyze_image(source: str | Path | np.ndarray, roi=None, model_bundle: dict 
     if run_faces:
         t0 = time.perf_counter()
         try:
-            cascade = cascade or face_roi.load_cascade()
+            cascade = cascade or face_roi.load_cascade(config["face"].get("cascade_path") or face_roi.DEFAULT_CASCADE, search_roots=(Path(config["root"]) / "assets", Path(config["root"])))
             result["faces"] = face_roi.detect_faces(rgb, cascade, config)
         except face_roi.CascadeLoadError as exc:
             result["faces"] = {"boxes_xywh": [], "status": str(Status.FAILED), "reason": str(exc)}

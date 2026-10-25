@@ -1,8 +1,14 @@
 import numpy as np
+from pathlib import Path
 
 from scalptrack import face_roi
 
 
+
+def test_load_cascade_accepts_explicit_path():
+    path = Path(__import__("cv2").data.haarcascades) / face_roi.DEFAULT_CASCADE
+    cascade = face_roi.load_cascade(str(path))
+    assert not cascade.empty()
 def test_haar_no_face_path(cfg):
     cascade = face_roi.load_cascade()
     img = (np.random.default_rng(0).random((200, 200, 3)) * 255).astype(np.uint8)

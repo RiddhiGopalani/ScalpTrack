@@ -129,6 +129,7 @@ stereo:
     units: mm
 
 face:
+  cascade_path: null
   scale_factor: 1.1
   min_neighbors: 5
   min_size: [40, 40]
@@ -142,6 +143,7 @@ classification:
   near_duplicate_min_corr: 0.9       # 32x32 thumbnail correlation needed to confirm a candidate
   logreg_C_grid: [0.01, 0.1, 1.0, 10.0]
   rf_n_estimators: 300
+  rf_n_jobs: 1
   class_weight: balanced
   uncertainty_threshold: null        # null = off; "auto" = chosen on VALIDATION (90% keep "predicted")
   max_images_per_class: null         # optional cap for quick CPU runs (applied per split, seeded)

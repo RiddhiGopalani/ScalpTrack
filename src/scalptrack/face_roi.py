@@ -22,17 +22,29 @@ class CascadeLoadError(RuntimeError):
     pass
 
 
-def load_cascade(name: str = DEFAULT_CASCADE) -> cv2.CascadeClassifier:
-    """Load a cascade from OpenCV's installed assets and verify it is not empty."""
+def load_cascade(name: str = DEFAULT_CASCADE, search_roots=()) -> cv2.CascadeClassifier:
+    """Load and verify a cascade from an explicit path, project assets, or OpenCV.
+
+    ``name`` remains backwards compatible with the previous OpenCV-only API. A
+    configured relative path is useful for portable/offline builds such as the
+    Member C package, which shipped its own cascade XML.
+    """
     if not hasattr(cv2, "CascadeClassifier"):
         raise CascadeLoadError("This OpenCV build has no CascadeClassifier (OpenCV 5 moved it); install opencv<5")
-    path = Path(cv2.data.haarcascades) / name
-    if not path.is_file():
-        raise CascadeLoadError(f"Cascade file not found: {path}")
-    cascade = cv2.CascadeClassifier(str(path))
-    if cascade.empty():
+    requested = Path(name)
+    candidates = [requested] if requested.is_absolute() else [Path(root) / requested for root in search_roots]
+    if not requested.is_absolute():
+        candidates.extend([Path(cv2.data.haarcascades) / requested, Path(cv2.data.haarcascades) / requested.name])
+    candidates = list(dict.fromkeys(candidates))
+    for path in candidates:
+        if not path.is_file():
+            continue
+        cascade = cv2.CascadeClassifier(str(path))
+        if not cascade.empty():
+            return cascade
         raise CascadeLoadError(f"Cascade failed to load: {path}")
-    return cascade
+    searched = ", ".join(str(p) for p in candidates)
+    raise CascadeLoadError(f"Cascade file not found; searched: {searched}")
 
 
 def detect_faces(rgb_image: np.ndarray, cascade: cv2.CascadeClassifier, config: dict) -> dict:

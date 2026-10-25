@@ -112,7 +112,7 @@ def make_candidates(cfg: dict) -> dict[str, Pipeline]:
         ])
     models["random_forest"] = Pipeline([
         ("impute", SimpleImputer(strategy="median")),
-        ("clf", RandomForestClassifier(n_estimators=c["rf_n_estimators"], class_weight=cw, random_state=seed, n_jobs=-1)),
+        ("clf", RandomForestClassifier(n_estimators=c["rf_n_estimators"], class_weight=cw, random_state=seed, n_jobs=int(c.get("rf_n_jobs", 1)))),
     ])
     return models
 
