@@ -1,0 +1,239 @@
+{
+  "provenance": "synthetic",
+  "trained_on": "synthetic_fixture",
+  "task_mode": "image_classification",
+  "model_id": "synthetic_fixture__random_forest__seed42",
+  "selected_model": "random_forest",
+  "classes": [
+    "synthetic_dense_strands",
+    "synthetic_flaky_surface",
+    "synthetic_sparse_strands"
+  ],
+  "validation_selection": [
+    {
+      "model": "random_forest",
+      "val_macro_f1": 0.7407407407407406,
+      "val_accuracy": 0.7333333333333333,
+      "val_balanced_accuracy": 0.7333333333333334,
+      "fit_seconds": 0.4038882000022568
+    },
+    {
+      "model": "logreg_C0.01",
+      "val_macro_f1": 0.7333333333333334,
+      "val_accuracy": 0.7333333333333333,
+      "val_balanced_accuracy": 0.7333333333333334,
+      "fit_seconds": 0.012077599996700883
+    },
+    {
+      "model": "logreg_C0.1",
+      "val_macro_f1": 0.6941627225602884,
+      "val_accuracy": 0.6888888888888889,
+      "val_balanced_accuracy": 0.6888888888888888,
+      "fit_seconds": 0.011498600011691451
+    },
+    {
+      "model": "logreg_C1",
+      "val_macro_f1": 0.6773504273504273,
+      "val_accuracy": 0.6666666666666666,
+      "val_balanced_accuracy": 0.6666666666666666,
+      "fit_seconds": 0.01745909999590367
+    },
+    {
+      "model": "logreg_C10",
+      "val_macro_f1": 0.611111111111111,
+      "val_accuracy": 0.6,
+      "val_balanced_accuracy": 0.6,
+      "fit_seconds": 0.02172319998499006
+    },
+    {
+      "model": "majority_baseline",
+      "val_macro_f1": 0.16666666666666666,
+      "val_accuracy": 0.3333333333333333,
+      "val_balanced_accuracy": 0.3333333333333333,
+      "fit_seconds": 0.025089800008572638
+    }
+  ],
+  "test": {
+    "status": "ok",
+    "selected": {
+      "n": 45,
+      "accuracy": 0.7333333333333333,
+      "balanced_accuracy": 0.7333333333333334,
+      "macro_f1": 0.7387205387205387,
+      "weighted_f1": 0.7387205387205387,
+      "per_class": {
+        "synthetic_dense_strands": {
+          "precision": 1.0,
+          "recall": 0.8,
+          "f1-score": 0.8888888888888888,
+          "support": 15.0
+        },
+        "synthetic_flaky_surface": {
+          "precision": 0.6666666666666666,
+          "recall": 0.8,
+          "f1-score": 0.7272727272727273,
+          "support": 15.0
+        },
+        "synthetic_sparse_strands": {
+          "precision": 0.6,
+          "recall": 0.6,
+          "f1-score": 0.6,
+          "support": 15.0
+        },
+        "accuracy": 0.7333333333333333,
+        "macro avg": {
+          "precision": 0.7555555555555555,
+          "recall": 0.7333333333333334,
+          "f1-score": 0.7387205387205387,
+          "support": 45.0
+        },
+        "weighted avg": {
+          "precision": 0.7555555555555555,
+          "recall": 0.7333333333333333,
+          "f1-score": 0.7387205387205387,
+          "support": 45.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          12,
+          0,
+          3
+        ],
+        [
+          0,
+          12,
+          3
+        ],
+        [
+          0,
+          6,
+          9
+        ]
+      ],
+      "labels": [
+        "synthetic_dense_strands",
+        "synthetic_flaky_surface",
+        "synthetic_sparse_strands"
+      ]
+    },
+    "majority_baseline": {
+      "n": 45,
+      "accuracy": 0.3333333333333333,
+      "balanced_accuracy": 0.3333333333333333,
+      "macro_f1": 0.16666666666666666,
+      "weighted_f1": 0.16666666666666666,
+      "per_class": {
+        "synthetic_dense_strands": {
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1-score": 0.5,
+          "support": 15.0
+        },
+        "synthetic_flaky_surface": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 15.0
+        },
+        "synthetic_sparse_strands": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 15.0
+        },
+        "accuracy": 0.3333333333333333,
+        "macro avg": {
+          "precision": 0.1111111111111111,
+          "recall": 0.3333333333333333,
+          "f1-score": 0.16666666666666666,
+          "support": 45.0
+        },
+        "weighted avg": {
+          "precision": 0.1111111111111111,
+          "recall": 0.3333333333333333,
+          "f1-score": 0.16666666666666666,
+          "support": 45.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          15,
+          0,
+          0
+        ],
+        [
+          15,
+          0,
+          0
+        ],
+        [
+          15,
+          0,
+          0
+        ]
+      ],
+      "labels": [
+        "synthetic_dense_strands",
+        "synthetic_flaky_surface",
+        "synthetic_sparse_strands"
+      ]
+    },
+    "timing": {
+      "n_samples": 45,
+      "classifier_predict_seconds": 0.05229439999675378,
+      "note": "classifier step only (features precomputed); see per-image timing in notebook 05"
+    }
+  },
+  "ablation": [
+    {
+      "variant": "with_texture",
+      "n_features": 43,
+      "selected_model": "random_forest",
+      "val_macro_f1": 0.7407407407407406,
+      "test_macro_f1": 0.7387205387205387,
+      "test_accuracy": 0.7333333333333333,
+      "test_balanced_accuracy": 0.7333333333333334
+    },
+    {
+      "variant": "without_texture",
+      "n_features": 26,
+      "selected_model": "logreg_C0.1",
+      "val_macro_f1": 0.7286324786324786,
+      "test_macro_f1": 0.8659932659932661,
+      "test_accuracy": 0.8666666666666667,
+      "test_balanced_accuracy": 0.8666666666666667
+    }
+  ],
+  "split_counts": [
+    {
+      "canonical_label": "synthetic_dense_strands",
+      "test": 15,
+      "train": 60,
+      "validation": 15
+    },
+    {
+      "canonical_label": "synthetic_flaky_surface",
+      "test": 15,
+      "train": 60,
+      "validation": 15
+    },
+    {
+      "canonical_label": "synthetic_sparse_strands",
+      "test": 15,
+      "train": 60,
+      "validation": 15
+    }
+  ],
+  "versions": {
+    "python": "3.13.7",
+    "numpy": "2.5.4",
+    "opencv": "4.14.0",
+    "scikit-learn": "1.9.1",
+    "scikit-image": "0.26.0",
+    "pandas": "3.1.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD"
+  },
+  "seed": 42
+}

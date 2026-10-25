@@ -1,0 +1,5 @@
+# OPTIONAL P1 profile: frozen MobileNetV2 embeddings (scalptrack.transfer).
+# Not installed or tested in the base environment. TensorFlow wheels must support
+# your Python version; if pip cannot find one, use Python 3.11/3.12 for this profile.
+-r requirements.txt
+tensorflow>=2.16

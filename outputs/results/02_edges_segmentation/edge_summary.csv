@@ -1,0 +1,6 @@
+image,provenance,map,edge_fraction,n_fragments,mean_fragment_px,frac_fragments_le_5px
+flakes,synthetic,sobel_binary,0.165825,33,201.0,0.5151515151515151
+flakes,synthetic,prewitt_binary,0.16855,19,354.8421052631579,0.2631578947368421
+flakes,synthetic,canny_30_90,0.078275,31,101.0,0.0967741935483871
+flakes,synthetic,canny_50_150,0.072325,15,192.86666666666667,0.0
+flakes,synthetic,canny_80_200,0.0713,13,219.3846153846154,0.0

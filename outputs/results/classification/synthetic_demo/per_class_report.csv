@@ -1,0 +1,4 @@
+,precision,recall,f1-score,support
+synthetic_dense_strands,1.0,0.8,0.8888888888888888,15.0
+synthetic_flaky_surface,0.6666666666666666,0.8,0.7272727272727273,15.0
+synthetic_sparse_strands,0.6,0.6,0.6,15.0

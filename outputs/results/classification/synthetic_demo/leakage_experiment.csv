@@ -1,0 +1,3 @@
+protocol,test_macro_f1_mean,test_macro_f1_std
+naive per-image,0.9719026071967249,0.03786934775933395
+grouped by source,0.4986094080455931,0.17822620573237133

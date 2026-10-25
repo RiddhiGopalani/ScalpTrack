@@ -1,0 +1,6 @@
+fixture,true_hairs,components,crossings,flags,width_median_px,true_width_px,width_samples
+crossing_X,2,1,1,components_with_more_than_two_tips,5.656854152679443,5.0,249
+touching,2,1,1,components_with_more_than_two_tips,6.0,5.0,226
+fragmented,1,4,0,-,6.0,5.0,111
+curl_multi_crossing,1,1,4,-,5.656854152679443,5.0,191
+noisy,3,3,3,-,6.0,5.0,448

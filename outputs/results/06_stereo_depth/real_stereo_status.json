@@ -1,0 +1,12 @@
+{
+  "real_scalp_stereo": "unavailable",
+  "reason": "no verified stereo pair/calibration in the linked exports",
+  "candidate_pair_files": [],
+  "calibration_files": [],
+  "gate_failed_checks": [
+    "a stereo pair needs two images; only one (or none) was supplied",
+    "no documented pair_id linking the two views",
+    "not confirmed that both views show the same static region",
+    "calibration: no calibration supplied"
+  ]
+}

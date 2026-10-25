@@ -1,0 +1,8 @@
+capability,status,reason
+condition classification labels,unavailable,dataset not downloaded
+independent patient identity,unavailable,no patient_id supplied by the source; grouping is by duplicate cluster
+hair instance / count labels,unavailable,dataset not downloaded
+segmentation masks,unavailable,none in export
+physical pixel scale (um/px),unavailable,no documented scale; widths stay in pixels
+calibrated stereo pairs,unavailable,no verified pair/calibration; synthetic stereo demo only
+face-containing images (Haar positive case),to be checked in notebook 07,requires running the detector over the downloaded images

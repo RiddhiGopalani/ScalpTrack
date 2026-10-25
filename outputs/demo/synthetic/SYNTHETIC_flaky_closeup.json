@@ -1,0 +1,223 @@
+{
+  "schema_version": "1.0",
+  "image_id": "SYNTHETIC_flaky_closeup",
+  "source": "in_memory_array",
+  "roi_xyxy": [
+    0,
+    0,
+    200,
+    200
+  ],
+  "input_hash": "acf9c2684d6fdc7b5dafa92b59d4f05fbc4a7d4eec17805041a1023cddbba74c",
+  "run_config_id": "b42a3ae911f0",
+  "quality": {
+    "width_px": 200,
+    "height_px": 200,
+    "laplacian_var": 649.084874474375,
+    "dark_fraction": 0.0,
+    "bright_fraction": 0.0,
+    "specular_fraction": 0.0,
+    "mean_gray": 161.36525,
+    "std_gray": 44.83008858386854,
+    "flags": [],
+    "measurement_eligible": true
+  },
+  "classification": {
+    "status": "synthetic_demo",
+    "predicted_label": "synthetic_flaky_surface",
+    "decision": "predicted",
+    "class_scores": {
+      "synthetic_flaky_surface": 0.37,
+      "synthetic_dense_strands": 0.36666666666666664,
+      "synthetic_sparse_strands": 0.2633333333333333
+    },
+    "model_id": "synthetic_fixture__random_forest__seed42",
+    "task_mode": "image_classification",
+    "inference_seconds": 0.10458019998623058,
+    "reason": "Model trained on SYNTHETIC fixtures: labels are not scalp conditions"
+  },
+  "hair_count": {
+    "value": 7,
+    "unit": "crossings",
+    "status": "synthetic_demo",
+    "method": "reference_line",
+    "reason": "Distinct mask runs along a line perpendicular to the dominant shaft direction (merge gap 2 px). One curling shaft can cross more than once.",
+    "quantity": "reference_line_crossings",
+    "line_xyxy": [
+      199.0,
+      100.82,
+      0.0,
+      98.18
+    ]
+  },
+  "shaft_width": {
+    "median_px": 4.0,
+    "iqr_px": 0.0,
+    "valid_samples": 1334,
+    "median_um": null,
+    "pixel_scale_um_per_px": null,
+    "method": "distance_transform_on_skeleton",
+    "unit": "px",
+    "flags": [],
+    "params": {
+      "exclude_radius_px": 4,
+      "width_offset_px": 0.0,
+      "min_resolvable_width_px": 4.0
+    },
+    "q25_px": 4.0,
+    "q75_px": 4.0,
+    "status": "synthetic_demo",
+    "reason": "Synthetic fixture with known width.",
+    "physical_status": "unavailable",
+    "physical_reason": "No documented pixel scale for this image/ROI; micrometres cannot be derived from pixels alone"
+  },
+  "stereo": {
+    "pair_id": null,
+    "calibration_id": null,
+    "disparity_unit": "px",
+    "depth_unit": null,
+    "valid_coverage": null,
+    "status": "unavailable",
+    "reason": "No verified stereo pair/calibration supplied with a single image"
+  },
+  "faces": {
+    "boxes_xywh": [],
+    "n_faces": 0,
+    "params": {
+      "scaleFactor": 1.1,
+      "minNeighbors": 5,
+      "minSize": [
+        40,
+        40
+      ]
+    },
+    "status": "ok",
+    "reason": "No frontal face detected (expected for scalp close-ups). Use the manual ROI path."
+  },
+  "coverage": {
+    "visible_scalp_fraction": 0.8472923912767524,
+    "hair_coverage_fraction": 0.1527076087232476,
+    "scalp_to_hair_area_ratio": 5.548462177888612,
+    "flake_candidate_coverage": 0.015275,
+    "excluded_fraction": 0.0,
+    "unit": "pixel-area fraction"
+  },
+  "texture_features": {
+    "gray_mean": 161.27378845214844,
+    "gray_std": 43.96666259388143,
+    "gray_p05": 45.0,
+    "gray_p50": 179.0,
+    "gray_p95": 189.0,
+    "hue_cos_mean": 0.9443292180704855,
+    "hue_sin_mean": 0.3140627126577031,
+    "hue_resultant": 0.9951849373777366,
+    "s_mean": 77.01931762695312,
+    "s_std": 11.787735454766302,
+    "v_mean": 190.5362091064453,
+    "v_std": 50.23079152201321,
+    "lab_L_mean": 65.22242736816406,
+    "lab_L_std": 17.52751350402832,
+    "lab_a_mean": 11.897241592407227,
+    "lab_a_std": 3.404693365097046,
+    "lab_b_mean": 14.67263412475586,
+    "lab_b_std": 3.995340585708618,
+    "canny_edge_fraction": 0.0560455322265625,
+    "sobel_mag_mean": 72.72530460987363,
+    "sobel_mag_std": 112.99154136045082,
+    "grad_orient_0_45": 0.46928116150559207,
+    "grad_orient_45_90": 0.03905497145920717,
+    "grad_orient_90_135": 0.03980774568618404,
+    "grad_orient_135_180": 0.4518561213490168,
+    "grad_orientation_coherence": 0.8710053956010616,
+    "hist_entropy_bits": 5.834780424695204,
+    "glcm_contrast_mean": 13.662170545736812,
+    "glcm_contrast_std": 15.024344697676488,
+    "glcm_asm_mean": 0.11825350925533161,
+    "glcm_asm_std": 0.017256792680774374,
+    "glcm_energy_mean": 0.342930339099456,
+    "glcm_energy_std": 0.025540003532962492,
+    "glcm_entropy_bits_mean": 4.84937798170722,
+    "glcm_entropy_bits_std": 0.3517326286153668,
+    "glcm_homogeneity_mean": 0.6708721120149103,
+    "glcm_homogeneity_std": 0.08080603462597787,
+    "glcm_correlation_mean": 0.7768307038747029,
+    "glcm_correlation_std": 0.2445762918828827,
+    "laplacian_band_energy_l0": 84.60539124061756,
+    "laplacian_band_energy_l1": 301.3313236386996,
+    "laplacian_band_energy_l2": 443.32589712943235,
+    "laplacian_band_energy_l3": 268.9777938425702
+  },
+  "artifacts": {
+    "figure_result_panel": "SYNTHETIC_flaky_closeup_result_panel.png"
+  },
+  "timings_s": {
+    "load_validate": 0.00019319995772093534,
+    "quality": 0.000658600009046495,
+    "faces": 0.17303160001756623,
+    "segmentation_edges": 0.008890099998097867,
+    "features": 0.05666890001157299,
+    "classification": 0.10458819998893887,
+    "measurements": 0.008911099983379245,
+    "total": 0.35306569997919723
+  },
+  "provenance": "synthetic",
+  "run": {
+    "seed": 42,
+    "versions": {
+      "python": "3.13.7",
+      "numpy": "2.5.4",
+      "opencv": "4.14.0",
+      "scikit-learn": "1.9.1",
+      "scikit-image": "0.26.0",
+      "pandas": "3.1.0",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD"
+    },
+    "model_id": "synthetic_fixture__random_forest__seed42"
+  },
+  "segmentation": {
+    "method": {
+      "method": "adaptive_gaussian",
+      "block_size": 15,
+      "C": 8,
+      "open_kernel": 0,
+      "close_kernel": 3,
+      "min_component_area": 30,
+      "inverse": true
+    },
+    "flake": {
+      "percentile": 98.5,
+      "intensity_level": 230.0,
+      "local_contrast_min": 10.0,
+      "max_saturation": 70,
+      "area_range": [
+        6,
+        2000
+      ]
+    },
+    "status": "synthetic_demo",
+    "reason": "Heuristic threshold candidates; no ground-truth masks"
+  },
+  "edges": {
+    "canny_thresholds": [
+      50,
+      150
+    ],
+    "edge_fraction": 0.072325,
+    "n_fragments": 15,
+    "mean_fragment_px": 192.86666666666667,
+    "frac_fragments_le_5px": 0.0
+  },
+  "hair_components": {
+    "value": 7,
+    "unit": "candidates",
+    "status": "synthetic_demo",
+    "method": "connected_components_8",
+    "reason": "Separate shaft-like mask components after removing components < 30 px and 8 short compact non-shaft component(s). A component is not necessarily one hair.",
+    "quantity": "isolated_strand_candidates",
+    "junction_fraction": 0.0,
+    "non_shaft_components_excluded": 8
+  },
+  "hair_count_flags": [],
+  "status": "ok"
+}
