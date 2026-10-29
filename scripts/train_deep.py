@@ -9,7 +9,12 @@ Pipeline (every decision uses train/validation only; test is scored once at the 
  2. A new grouped 70/15/15 split ("v2"), so no copy group spans train/validation/test.
  3. Before/after on the same v2 split: the old feature random forest vs the new embedding model.
  4. Head and hyper-parameters selected on validation macro-F1. Confidence and out-of-distribution
-    thresholds calibrated on validation.
+    thresholds calibrated on validation. Independent per-condition match scores (deep.MatchScorer,
+    not summing to 100%) are calibrated on validation, so photos unlike every condition score low.
+    The match level that reports a condition is the highest one that keeps validation recall >= 95%.
+ 4b. Optional "healthy" class from the user-added folder ``healthy_dir`` (config). It is far too small for
+    a held-out split, so it is evaluated by leave-one-out: each healthy photo is scored by a model
+    trained without it.
  5. One locked test evaluation, plus memorisation, shortcut (occlusion) and OOD probes.
 
 Outputs: models/<source>/deep_bundle.joblib, outputs/results/model_v2/metrics.json, figures in
@@ -50,6 +55,11 @@ CANDIDATE_SIM = 0.85  # embedding cosine that makes a pair a copy *candidate* (t
 COPY_SIM_REPORT = 0.92  # used only to report how many test images have a very close train neighbour
 CONFIDENT_COVERAGE = 0.80  # share of validation images that should receive a confident prediction
 OOD_PERCENTILE = 1.0  # validation images below this percentile of nearest-train similarity count as unusual
+MATCH_RECALL_TARGET = 0.95  # the match level is the highest that still reports the true condition for 95% of validation photos
+MATCH_LEVELS = (0.01, 0.02, 0.03, 0.05, 0.075, 0.10, 0.15, 0.20)
+HEALTHY = "healthy"
+HEALTHY_THRESHOLD = 0.5  # head probability of "healthy" from which the app reports a healthy-looking scalp
+MATCH_WEIGHTS = (10.0, 20.0, 40.0)  # similarity weight in the match score, chosen on validation macro-F1
 
 
 def log(msg: str) -> None:
@@ -98,12 +108,16 @@ def strict_groups(man: pd.DataFrame, emb: np.ndarray, base: Path, cfg: dict) -> 
 # --------------------------------------------------------------------------- 3-4. models
 
 
+def make_head(C, seed):
+    return Pipeline([("scale", StandardScaler()),
+                     ("clf", LogisticRegression(C=C, class_weight="balanced", max_iter=3000, random_state=seed))])
+
+
 def fit_linear_head(Xtr, ytr, Xva, yva, classes, seed):
     """Logistic-regression head on standardised embeddings; C chosen on validation macro-F1."""
     rows, best = [], None
     for C in (0.003, 0.01, 0.03, 0.1, 0.3, 1.0):
-        model = Pipeline([("scale", StandardScaler()),
-                          ("clf", LogisticRegression(C=C, class_weight="balanced", max_iter=3000, random_state=seed))])
+        model = make_head(C, seed)
         model.fit(Xtr, ytr)
         m = metrics(yva, model.predict(Xva), classes)
         rows.append({"model": f"linear_head_C{C:g}", "val_macro_f1": m["macro_f1"], "val_accuracy": m["accuracy"]})
@@ -119,6 +133,43 @@ def fit_old_model(feat: pd.DataFrame, tr, va, classes, seed):
                       ("clf", RandomForestClassifier(n_estimators=300, class_weight="balanced", random_state=seed, n_jobs=1))])
     model.fit(feat.loc[tr, names].to_numpy(), feat.loc[tr, "y"].to_numpy())
     return model, names
+
+
+def load_healthy(cfg: dict, source: str, bb: deep.Backbone) -> tuple[np.ndarray, list[str]]:
+    """Embeddings of the user-added healthy photos (byte-identical copies dropped); empty if none."""
+    import hashlib
+
+    rel = cfg["datasets"]["sources"][source].get("healthy_dir")
+    folder = Path(cfg["root"]) / cfg["datasets"]["sources"][source]["dir"] / rel if rel else None
+    if folder is None or not folder.is_dir():
+        return np.zeros((0, deep.EMBED_DIM), np.float32), []
+    files, seen = [], set()
+    for f in sorted(folder.iterdir()):
+        if f.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".bmp"}:
+            digest = hashlib.md5(f.read_bytes()).hexdigest()
+            if digest not in seen:
+                seen.add(digest)
+                files.append(f)
+    return deep.normalise(bb.embed([deep.load_rgb(f) for f in files])), [f.name for f in files]
+
+
+def healthy_leave_one_out(Xtr, ytr, Xva, yva, H, C, weight, seed) -> pd.DataFrame:
+    """Score each healthy photo with a model trained without it."""
+    rows = []
+    for i in range(len(H)):
+        rest = np.delete(H, i, 0)
+        X, Y = np.vstack([Xtr, rest]), np.concatenate([ytr, [HEALTHY] * len(rest)])
+        sc = deep.MatchScorer(make_head(C, seed).fit(X, Y), X, Y, weight=weight, healthy_label=HEALTHY).calibrate(Xva, yva)
+        rows.append({"photo": i, "p_healthy": float(sc.healthy_probability(H[i:i + 1])[0]),
+                     "highest_condition_match": float(sc(H[i:i + 1]).max())})
+    return pd.DataFrame(rows)
+
+
+def choose_match_level(match: np.ndarray, true_idx: np.ndarray) -> float:
+    """Highest match level whose validation recall (true condition reported) is >= MATCH_RECALL_TARGET."""
+    true_match = match[np.arange(len(true_idx)), true_idx]
+    ok = [lvl for lvl in MATCH_LEVELS if (true_match >= lvl).mean() >= MATCH_RECALL_TARGET]
+    return max(ok) if ok else min(MATCH_LEVELS)
 
 
 # --------------------------------------------------------------------------- figures
@@ -204,8 +255,13 @@ def main() -> int:
     old_val = metrics(y[va], old_model.predict(feat.loc[va, names].to_numpy()), classes)
     log(f"BEFORE (old RF, v2 split): val macro-F1 {old_val['macro_f1']:.3f} | test acc {old_test['accuracy']:.3f} macro-F1 {old_test['macro_f1']:.3f}")
 
-    # ---- 3b. AFTER: embedding model, selected on validation
-    head, best_C, selection = fit_linear_head(emb[tr], y[tr], emb[va], y[va], classes, seed)
+    # ---- 3b. AFTER: embedding model, selected on validation (plus the optional healthy photos in training)
+    bb = deep.Backbone()
+    H, healthy_files = load_healthy(cfg, source, bb)
+    log(f"healthy photos: {len(H)} unique" + ("" if len(H) else " (no healthy_dir folder; training without a healthy class)"))
+    Xtr = np.vstack([emb[tr], H])
+    ytr = np.concatenate([y[tr], [HEALTHY] * len(H)])
+    head, best_C, selection = fit_linear_head(Xtr, ytr, emb[va], y[va], classes, seed)
     knn = KNeighborsClassifier(n_neighbors=1, metric="cosine").fit(emb[tr], y[tr])
     selection = pd.concat([selection, pd.DataFrame([
         {"model": "old_feature_random_forest", "val_macro_f1": old_val["macro_f1"], "val_accuracy": old_val["accuracy"]},
@@ -223,6 +279,25 @@ def main() -> int:
     conf_val_acc = float((pred_val[top_val >= conf_thr] == y[va][top_val >= conf_thr]).mean())
     log(f"confidence threshold {conf_thr:.3f} (val coverage {CONFIDENT_COVERAGE:.0%}, val accuracy when confident {conf_val_acc:.3f}); OOD similarity threshold {ood_thr:.3f}")
 
+    # Independent per-condition match scores (do not sum to 100%), calibrated on validation
+    scorers = {w: deep.MatchScorer(head, Xtr, ytr, weight=w, healthy_label=HEALTHY).calibrate(emb[va], y[va]) for w in MATCH_WEIGHTS}
+    match_sel = {w: metrics(y[va], np.array(s.match_classes)[s(emb[va]).argmax(1)], classes)["macro_f1"] for w, s in scorers.items()}
+    best_w = max(match_sel, key=match_sel.get)
+    scorer = scorers[best_w]
+    match_level = choose_match_level(scorer(emb[va]), np.array([scorer.match_classes.index(c) for c in y[va]]))
+    log(f"match-score weight selection (val macro-F1): {match_sel} -> {best_w}; match level {match_level} (val recall >= {MATCH_RECALL_TARGET:.0%})")
+
+    healthy_eval = None
+    if len(H):
+        loo = healthy_leave_one_out(emb[tr], y[tr], emb[va], y[va], H, best_C, best_w, seed)
+        healthy_eval = {
+            "unique_photos": int(len(H)),
+            "leave_one_out_called_healthy": f"{int((loo.p_healthy >= HEALTHY_THRESHOLD).sum())}/{len(loo)}",
+            "leave_one_out_no_condition_reported": f"{int(((loo.p_healthy >= HEALTHY_THRESHOLD) | (loo.highest_condition_match < match_level)).sum())}/{len(loo)}",
+            "leave_one_out": loo.to_dict("records"),
+        }
+        log(f"healthy leave-one-out:\n{loo.round(3).to_string(index=False)}")
+
     # ---- 5. TEST, once
     p_te = head.predict_proba(emb[te])
     pred_te = head.classes_[p_te.argmax(1)]
@@ -235,9 +310,24 @@ def main() -> int:
     log(f"AFTER (embedding head, v2 split): test acc {new_test['accuracy']:.3f} macro-F1 {new_test['macro_f1']:.3f} | 1-NN {knn_test['accuracy']:.3f}")
     log(f"confident subset: {conf_test}")
 
+    m_te = scorer(emb[te])
+    true_idx = np.array([scorer.match_classes.index(c) for c in y[te]])
+    called_healthy = scorer.healthy_probability(emb[te]) >= HEALTHY_THRESHOLD
+    shown = (m_te.max(1) >= match_level) & ~called_healthy
+    match_pred = np.array(scorer.match_classes)[m_te.argmax(1)]
+    match_test = {
+        **{k: v for k, v in metrics(y[te], match_pred, classes).items() if k in ("accuracy", "balanced_accuracy", "macro_f1")},
+        "recall_true_condition_reported": float(((m_te[np.arange(len(true_idx)), true_idx] >= match_level) & ~called_healthy).mean()),
+        "condition_photos_called_healthy": float(called_healthy.mean()),
+        "condition_photos_with_no_condition_reported": float((~shown).mean()),
+        "accuracy_when_a_match_is_shown": float((match_pred[shown] == y[te][shown]).mean()),
+        "median_true_condition_match": float(np.median(m_te[np.arange(len(true_idx)), true_idx])),
+        "mean_conditions_at_or_above_match_level": float((m_te >= match_level).sum(1).mean()),
+    }
+    log(f"match scores on test: {match_test}")
+
     # Shortcut probe: same test images with the centre or the border hidden
     te_paths = [base / p for p in man.loc[te, "relative_path"]]
-    bb = deep.Backbone()
     probe = {}
     for keep_part in ("centre", "border"):
         e = bb.embed([deep.occlude(deep.load_rgb(p), keep_part) for p in te_paths])
@@ -258,9 +348,12 @@ def main() -> int:
     ood_emb = bb.embed(list(ood_imgs.values()))
     ood_sim, _ = deep.max_similarity(ood_emb, emb[tr])
     ood_top = head.predict_proba(ood_emb).max(1)
+    ood_match = scorer(ood_emb).max(1)
+    ood_healthy = scorer.healthy_probability(ood_emb)
     ood_rows = [{"image": k, "nearest_train_similarity": float(s), "flagged_ood": bool(s < ood_thr),
-                 "top_score": float(t), "would_be_confident": bool(t >= conf_thr and s >= ood_thr)}
-                for k, s, t in zip(ood_imgs, ood_sim, ood_top)]
+                 "top_score": float(t), "would_be_confident": bool(t >= conf_thr and s >= ood_thr),
+                 "highest_match_score": float(m), "p_healthy": float(h)}
+                for k, s, t, m, h in zip(ood_imgs, ood_sim, ood_top, ood_match, ood_healthy)]
     sim_te, _ = deep.max_similarity(emb[te], emb[tr])
     ood_summary = {"ood_images_flagged": f"{sum(r['flagged_ood'] for r in ood_rows)}/{len(ood_rows)}",
                    "test_images_wrongly_flagged_ood": float((sim_te < ood_thr).mean())}
@@ -289,7 +382,8 @@ def main() -> int:
         "bundle_version": "2.0", "model_type": "frozen_mobilenetv2_linear_head", "backbone": deep.BACKBONE,
         "model": head, "classes": list(head.classes_), "best_C": best_C, "data_provenance": "real", "trained_on": source,
         "confidence_threshold": conf_thr, "ood_similarity_threshold": ood_thr,
-        "train_embeddings": emb[tr].astype(np.float16), "seed": seed, "versions": package_versions(),
+        "match_scorer": scorer, "match_level": match_level,
+        "healthy_label": HEALTHY if len(H) else None, "healthy_threshold": HEALTHY_THRESHOLD, "seed": seed, "versions": package_versions(),
         "model_id": f"{source}__mobilenetv2_linear_C{best_C:g}__seed{seed}",
         "split": "v2 (copy groups verified by ORB, grouped 70/15/15)",
     }
@@ -305,7 +399,11 @@ def main() -> int:
         "memorisation_1nn_test_accuracy": knn_test["accuracy"],
         "validation_selection": selection.to_dict("records"), "selected_C": best_C,
         "thresholds": {"confidence": conf_thr, "ood_similarity": ood_thr, "val_accuracy_when_confident": conf_val_acc},
-        "test_confidence_gating": conf_test, "shortcut_probe_test_accuracy": {"full_image": new_test["accuracy"], **probe},
+        "test_confidence_gating": conf_test,
+        "match_scores": {"weight_selection_val_macro_f1": match_sel, "selected_weight": best_w, "match_level": match_level,
+                         "recall_target_val": MATCH_RECALL_TARGET, "test": match_test},
+        "healthy": healthy_eval,
+"shortcut_probe_test_accuracy": {"full_image": new_test["accuracy"], **probe},
         "ood_probe": {"summary": ood_summary, "images": ood_rows},
     }
     (res_dir / "metrics.json").write_text(json.dumps(report, indent=2, default=float), encoding="utf-8")

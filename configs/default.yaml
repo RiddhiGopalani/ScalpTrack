@@ -28,6 +28,8 @@ datasets:
       task_type: image_classification
       layout: split_class_folders     # <root>/<split>/<class>/<image>
       split_aliases: {train: train, val: validation, valid: validation, validation: validation, test: test}
+      healthy_dir: Hair Diseases - Final/healthy_hair   # optional, user-added healthy-scalp photos (not part of the Kaggle
+                                                       # download); used by scripts/train_deep.py, skipped by the audit
     maheshwariss_hair_and_scalp:
       dir: data/raw/maheshwariss_hair_and_scalp
       url: https://universe.roboflow.com/maheshwariss-workspace-nn7d1/hair-and-scalp-w3ih8

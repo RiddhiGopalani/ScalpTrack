@@ -192,3 +192,12 @@ def test_capability_audit_reports_unavailable():
 def test_canonical_label():
     assert audit.canonical_label("Hair-and-Scalp-Diseases-MPB-") == "hair_and_scalp_diseases_mpb"
     assert audit.canonical_label(None) is None
+
+
+def test_scan_skips_user_added_healthy_folder(tmp_path):
+    base = tmp_path / "ds"
+    for rel in ("train/Psoriasis/a.png", "healthy_hair/b.png"):
+        (base / rel).parent.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(np.zeros((8, 8, 3), np.uint8)).save(base / rel)
+    scan = audit.scan_source({"dir": "ds", "healthy_dir": "healthy_hair"}, tmp_path)
+    assert scan.files["relative_path"].tolist() == ["train/Psoriasis/a.png"]

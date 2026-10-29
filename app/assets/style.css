@@ -74,7 +74,7 @@ h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; color: var(--ink); letter-
 .st-verdict { border-radius: 22px; padding: 26px 28px; display: flex; gap: 22px; align-items: center; margin: 8px 0 18px;
               border: 1px solid transparent; }
 .st-verdict.match { background: linear-gradient(120deg, #FFFFFF 0%, var(--rose-soft) 100%); border-color: #F2CBD6; }
-.st-verdict.uncertain { background: linear-gradient(120deg, #FFFFFF 0%, var(--amber-soft) 100%); border-color: #EEDAB0; }
+.st-verdict.no_match { background: linear-gradient(120deg, #FFFFFF 0%, var(--teal-soft) 100%); border-color: #BFE0DC; }
 .st-verdict.unavailable { background: linear-gradient(120deg, #FFFFFF 0%, var(--slate-soft) 100%); border-color: var(--line); }
 .st-verdict .ring { flex: 0 0 92px; height: 92px; border-radius: 50%; display: grid; place-items: center;
                     font-weight: 700; font-size: 1.35rem; color: var(--ink); }

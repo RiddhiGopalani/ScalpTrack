@@ -111,6 +111,11 @@ Features are cached in `data/derived/`, so re-running is fast.
 
 ### 4.2b Train the v2 model used by the app (about 15 minutes on CPU)
 
+Optional healthy class: put healthy-scalp photos in
+`data/raw/kaggle_hair_diseases/Hair Diseases - Final/healthy_hair/` (the `healthy_dir` setting in
+`configs/default.yaml`). The audit skips this folder, and `train_deep.py` adds it as an 11th class and
+evaluates it with leave-one-out. Without the folder, the model trains on the 10 conditions only.
+
 ```bash
 python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 ```

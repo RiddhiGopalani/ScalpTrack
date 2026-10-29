@@ -60,94 +60,99 @@
     "weighted_f1": 0.4538341464131965
   },
   "after_embedding_head_v2_split": {
-    "accuracy": 0.5537659876835623,
-    "balanced_accuracy": 0.5725333373792386,
-    "macro_f1": 0.5443271194270862,
-    "weighted_f1": 0.544432053383988
+    "accuracy": 0.5532922785409758,
+    "balanced_accuracy": 0.5728855742260366,
+    "macro_f1": 0.5461996308430173,
+    "weighted_f1": 0.5454736625802158
   },
   "after_per_class": {
     "alopecia_areata": {
-      "precision": 0.717948717948718,
-      "recall": 0.4692737430167598,
-      "f1-score": 0.5675675675675675,
+      "precision": 0.6967213114754098,
+      "recall": 0.4748603351955307,
+      "f1-score": 0.5647840531561462,
       "support": 179.0
     },
     "contact_dermatitis": {
-      "precision": 0.9259259259259259,
-      "recall": 0.3021148036253776,
-      "f1-score": 0.45558086560364464,
+      "precision": 0.9150943396226415,
+      "recall": 0.2930513595166163,
+      "f1-score": 0.4439359267734554,
       "support": 331.0
     },
     "folliculitis": {
-      "precision": 0.9444444444444444,
-      "recall": 0.4885057471264368,
-      "f1-score": 0.6439393939393939,
+      "precision": 0.9456521739130435,
+      "recall": 0.5,
+      "f1-score": 0.6541353383458647,
       "support": 174.0
     },
     "head_lice": {
-      "precision": 0.7529411764705882,
-      "recall": 0.6018808777429467,
-      "f1-score": 0.6689895470383276,
+      "precision": 0.76,
+      "recall": 0.5956112852664577,
+      "f1-score": 0.6678383128295254,
       "support": 319.0
     },
     "lichen_planus": {
-      "precision": 0.4146341463414634,
-      "recall": 0.4497354497354497,
-      "f1-score": 0.43147208121827413,
+      "precision": 0.4326923076923077,
+      "recall": 0.47619047619047616,
+      "f1-score": 0.4534005037783375,
       "support": 189.0
     },
     "male_pattern_baldness": {
-      "precision": 0.7131147540983607,
-      "recall": 0.93048128342246,
-      "f1-score": 0.8074245939675174,
+      "precision": 0.7327586206896551,
+      "recall": 0.9090909090909091,
+      "f1-score": 0.8114558472553699,
       "support": 187.0
     },
     "psoriasis": {
-      "precision": 0.4031620553359684,
-      "recall": 0.6296296296296297,
-      "f1-score": 0.491566265060241,
+      "precision": 0.3852140077821012,
+      "recall": 0.6111111111111112,
+      "f1-score": 0.47255369928400953,
       "support": 162.0
     },
     "seborrheic_dermatitis": {
-      "precision": 0.42592592592592593,
+      "precision": 0.41818181818181815,
       "recall": 0.7225130890052356,
-      "f1-score": 0.5359223300970873,
+      "f1-score": 0.5297504798464492,
       "support": 191.0
     },
     "telogen_effluvium": {
-      "precision": 0.3445378151260504,
-      "recall": 0.20812182741116753,
-      "f1-score": 0.25949367088607594,
+      "precision": 0.36363636363636365,
+      "recall": 0.2233502538071066,
+      "f1-score": 0.27672955974842767,
       "support": 197.0
     },
     "tinea_capitis": {
-      "precision": 0.42424242424242425,
+      "precision": 0.4307692307692308,
       "recall": 0.9230769230769231,
-      "f1-score": 0.5813148788927336,
+      "f1-score": 0.5874125874125874,
       "support": 182.0
     },
-    "accuracy": 0.5537659876835623,
+    "micro avg": {
+      "precision": 0.5540796963946869,
+      "recall": 0.5532922785409758,
+      "f1-score": 0.5536857075136288,
+      "support": 2111.0
+    },
     "macro avg": {
-      "precision": 0.6066877385859869,
-      "recall": 0.5725333373792386,
-      "f1-score": 0.5443271194270862,
+      "precision": 0.608072017376257,
+      "recall": 0.5728855742260366,
+      "f1-score": 0.5461996308430173,
       "support": 2111.0
     },
     "weighted avg": {
-      "precision": 0.636183969163863,
-      "recall": 0.5537659876835623,
-      "f1-score": 0.544432053383988,
+      "precision": 0.6374757403233849,
+      "recall": 0.5532922785409758,
+      "f1-score": 0.5454736625802158,
       "support": 2111.0
     }
   },
   "after_confusion_matrix": [
     [
-      84,
+      85,
       0,
       0,
       0,
       0,
-      29,
+      28,
       0,
       1,
       31,
@@ -155,22 +160,22 @@
     ],
     [
       0,
-      100,
+      97,
       2,
-      19,
-      9,
+      16,
+      11,
       0,
-      72,
       77,
+      81,
       0,
-      52
+      47
     ],
     [
       0,
       0,
-      85,
+      87,
       1,
-      44,
+      42,
       0,
       2,
       4,
@@ -181,12 +186,12 @@
       0,
       6,
       0,
-      192,
+      190,
       25,
       0,
-      9,
-      53,
-      30,
+      11,
+      55,
+      28,
       4
     ],
     [
@@ -194,35 +199,35 @@
       0,
       0,
       1,
-      85,
-      11,
+      90,
+      6,
       22,
       15,
       0,
       53
     ],
     [
-      4,
+      7,
       0,
       0,
       0,
       0,
-      174,
+      170,
       0,
       0,
-      9,
+      8,
       0
     ],
     [
       0,
-      1,
+      2,
       0,
       11,
-      1,
       0,
-      102,
+      0,
+      99,
       14,
-      6,
+      8,
       27
     ],
     [
@@ -238,16 +243,16 @@
       4
     ],
     [
-      25,
+      26,
       1,
       0,
       0,
-      41,
-      30,
+      40,
+      28,
       28,
       15,
-      41,
-      16
+      44,
+      15
     ],
     [
       2,
@@ -278,33 +283,33 @@
   "validation_selection": [
     {
       "model": "linear_head_C0.003",
-      "val_macro_f1": 0.5310164912237723,
-      "val_accuracy": 0.5323741007194245
+      "val_macro_f1": 0.52861745856316,
+      "val_accuracy": 0.5298047276464543
     },
     {
       "model": "linear_head_C0.01",
-      "val_macro_f1": 0.5602370943477466,
+      "val_macro_f1": 0.5606805839358435,
       "val_accuracy": 0.5590955806783144
     },
     {
       "model": "linear_head_C0.03",
-      "val_macro_f1": 0.5776012456489414,
-      "val_accuracy": 0.578622816032888
+      "val_macro_f1": 0.5783112926474756,
+      "val_accuracy": 0.5781089414182939
     },
     {
       "model": "linear_head_C0.1",
-      "val_macro_f1": 0.5946199720124785,
-      "val_accuracy": 0.5976361767728674
+      "val_macro_f1": 0.5986812297788997,
+      "val_accuracy": 0.6002055498458376
     },
     {
       "model": "linear_head_C0.3",
-      "val_macro_f1": 0.5748218211793172,
-      "val_accuracy": 0.5801644398766701
+      "val_macro_f1": 0.584423379798846,
+      "val_accuracy": 0.5889003083247688
     },
     {
       "model": "linear_head_C1",
-      "val_macro_f1": 0.5933507104665043,
-      "val_accuracy": 0.5986639260020555
+      "val_macro_f1": 0.5974631197386295,
+      "val_accuracy": 0.6012332990750257
     },
     {
       "model": "old_feature_random_forest",
@@ -319,19 +324,92 @@
   ],
   "selected_C": 0.1,
   "thresholds": {
-    "confidence": 0.5456126928329468,
+    "confidence": 0.5304188132286072,
     "ood_similarity": 0.5737450122833252,
-    "val_accuracy_when_confident": 0.6718047527296083
+    "val_accuracy_when_confident": 0.6795118818240206
   },
   "test_confidence_gating": {
-    "coverage": 0.7565135007105637,
-    "accuracy_when_confident": 0.6368190356919223,
-    "accuracy_when_uncertain": 0.29571984435797666
+    "coverage": 0.7693036475603979,
+    "accuracy_when_confident": 0.624384236453202,
+    "accuracy_when_uncertain": 0.3162217659137577
+  },
+  "match_scores": {
+    "weight_selection_val_macro_f1": {
+      "10.0": 0.6187571769803901,
+      "20.0": 0.6260086242902488,
+      "40.0": 0.6222963596325861
+    },
+    "selected_weight": 20.0,
+    "match_level": 0.05,
+    "recall_target_val": 0.95,
+    "test": {
+      "accuracy": 0.5239223117006159,
+      "balanced_accuracy": 0.5455304016235224,
+      "macro_f1": 0.5467673405686609,
+      "recall_true_condition_reported": 0.8413074372335386,
+      "condition_photos_called_healthy": 0.0004737091425864519,
+      "condition_photos_with_no_condition_reported": 0.0246328754144955,
+      "accuracy_when_a_match_is_shown": 0.5274405050995629,
+      "median_true_condition_match": 0.3885076441083636,
+      "mean_conditions_at_or_above_match_level": 3.098531501657982
+    }
+  },
+  "healthy": {
+    "unique_photos": 9,
+    "leave_one_out_called_healthy": "6/9",
+    "leave_one_out_no_condition_reported": "6/9",
+    "leave_one_out": [
+      {
+        "photo": 0,
+        "p_healthy": 0.931866466999054,
+        "highest_condition_match": 0.0028388972083727517
+      },
+      {
+        "photo": 1,
+        "p_healthy": 0.9775795340538025,
+        "highest_condition_match": 0.004961906397928957
+      },
+      {
+        "photo": 2,
+        "p_healthy": 0.061277441680431366,
+        "highest_condition_match": 0.40153450152777526
+      },
+      {
+        "photo": 3,
+        "p_healthy": 0.9737048149108887,
+        "highest_condition_match": 0.0024347393601029006
+      },
+      {
+        "photo": 4,
+        "p_healthy": 0.6824586987495422,
+        "highest_condition_match": 0.11972868735672997
+      },
+      {
+        "photo": 5,
+        "p_healthy": 0.10438498109579086,
+        "highest_condition_match": 0.5653882662677232
+      },
+      {
+        "photo": 6,
+        "p_healthy": 0.7752726078033447,
+        "highest_condition_match": 0.04265658833362438
+      },
+      {
+        "photo": 7,
+        "p_healthy": 0.9615411162376404,
+        "highest_condition_match": 0.004886169658332574
+      },
+      {
+        "photo": 8,
+        "p_healthy": 0.01247972622513771,
+        "highest_condition_match": 0.860632197150971
+      }
+    ]
   },
   "shortcut_probe_test_accuracy": {
-    "full_image": 0.5537659876835623,
-    "keep_centre_only": 0.4817621980104216,
-    "keep_border_only": 0.3694931312174325
+    "full_image": 0.5532922785409758,
+    "keep_centre_only": 0.47513027001421126,
+    "keep_border_only": 0.3666508763619138
   },
   "ood_probe": {
     "summary": {
@@ -343,78 +421,100 @@
         "image": "astronaut",
         "nearest_train_similarity": 0.3346066474914551,
         "flagged_ood": true,
-        "top_score": 0.9703086018562317,
-        "would_be_confident": false
+        "top_score": 0.9393421411514282,
+        "would_be_confident": false,
+        "highest_match_score": 0.0,
+        "p_healthy": 0.05091880261898041
       },
       {
         "image": "coffee",
         "nearest_train_similarity": 0.24576808512210846,
         "flagged_ood": true,
-        "top_score": 0.40394264459609985,
-        "would_be_confident": false
+        "top_score": 0.771796464920044,
+        "would_be_confident": false,
+        "highest_match_score": 0.0,
+        "p_healthy": 0.771796464920044
       },
       {
         "image": "chelsea",
         "nearest_train_similarity": 0.3492996096611023,
         "flagged_ood": true,
-        "top_score": 0.7322869300842285,
-        "would_be_confident": false
+        "top_score": 0.7610607147216797,
+        "would_be_confident": false,
+        "highest_match_score": 0.0,
+        "p_healthy": 0.04689333587884903
       },
       {
         "image": "rocket",
         "nearest_train_similarity": 0.22127018868923187,
         "flagged_ood": true,
-        "top_score": 0.8446485996246338,
-        "would_be_confident": false
+        "top_score": 0.8705788850784302,
+        "would_be_confident": false,
+        "highest_match_score": 0.0,
+        "p_healthy": 0.001273440197110176
       },
       {
         "image": "camera",
         "nearest_train_similarity": 0.33195722103118896,
         "flagged_ood": true,
-        "top_score": 0.9807857871055603,
-        "would_be_confident": false
+        "top_score": 0.9386343359947205,
+        "would_be_confident": false,
+        "highest_match_score": 0.0,
+        "p_healthy": 0.9386343359947205
       },
       {
         "image": "coins",
         "nearest_train_similarity": 0.2823880910873413,
         "flagged_ood": true,
-        "top_score": 0.9688355922698975,
-        "would_be_confident": false
+        "top_score": 0.9196679592132568,
+        "would_be_confident": false,
+        "highest_match_score": 0.0,
+        "p_healthy": 0.03097657486796379
       },
       {
         "image": "brick",
         "nearest_train_similarity": 0.2633765935897827,
         "flagged_ood": true,
-        "top_score": 0.8341962099075317,
-        "would_be_confident": false
+        "top_score": 0.7456895709037781,
+        "would_be_confident": false,
+        "highest_match_score": 0.0,
+        "p_healthy": 0.7456895709037781
       },
       {
         "image": "grass",
         "nearest_train_similarity": 0.30572253465652466,
         "flagged_ood": true,
-        "top_score": 0.7335865497589111,
-        "would_be_confident": false
+        "top_score": 0.5176528692245483,
+        "would_be_confident": false,
+        "highest_match_score": 0.0,
+        "p_healthy": 0.3512493968009949
       },
       {
         "image": "gravel",
         "nearest_train_similarity": 0.315590500831604,
         "flagged_ood": true,
-        "top_score": 0.6274884343147278,
-        "would_be_confident": false
+        "top_score": 0.9998103976249695,
+        "would_be_confident": false,
+        "highest_match_score": 0.0,
+        "p_healthy": 0.9998103976249695
       },
       {
         "image": "hubble_deep_field",
         "nearest_train_similarity": 0.39003002643585205,
         "flagged_ood": true,
-        "top_score": 0.9932036399841309,
-        "would_be_confident": false
+        "top_score": 0.994819700717926,
+        "would_be_confident": false,
+        "highest_match_score": 0.023136326560267696,
+        "p_healthy": 0.0005107173346914351
       },
       {
         "image": "random_noise",
         "nearest_train_similarity": 0.29283010959625244,
         "flagged_ood": true,
-        "top_score": 0.5454370379447937,
-        "would_be_confident": false
+        "top_score": 0.5418671369552612,
+        "would_be_confident": false,
+        "highest_match_score": 0.0,
+        "p_healthy": 0.007853887043893337
       }
     ]
   }

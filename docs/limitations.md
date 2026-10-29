@@ -30,8 +30,13 @@ evidence in `reports/capability_status.md`.
   the verification step exists.
 * Colour and texture features can pick up camera, compression or lighting differences between
   publisher folders instead of condition-related appearance.
-* MobileNetV2 (P1), Grad-CAM and VGG19 (P2) were **not run**. TensorFlow is not in the tested
-  environment. `scalptrack.transfer` is a guarded, untested code path.
+* The app's model is a frozen ImageNet MobileNetV2 (PyTorch) with a linear head (`scripts/train_deep.py`).
+  It reaches 0.55 test accuracy on the strict copy-grouped split. Grad-CAM and VGG19 (P2) were **not
+  run**, and the TensorFlow path in `scalptrack.transfer` is guarded and untested.
+* The **healthy class** is learned from 9 user-added photos, some possibly of the same person, and is
+  evaluated only by leave-one-out (6/9 recognised). It is a rough indication, not a reliable healthy check.
+* The match level (5%) is chosen for high recall: the true condition is reported for 95% of validation
+  photos and 84% of test photos. The price is that several conditions often pass the level together.
 
 ## 3. Measurements
 
@@ -89,5 +94,5 @@ evidence in `reports/capability_status.md`.
 
 ## 8. Out of scope (per the specification)
 
-Scalp health index, treatment or serum recommendations, longitudinal tracking, general skin analysis,
-a frontend, cloud hosting.
+Scalp health index, treatment or serum recommendations, longitudinal tracking, general skin analysis and
+cloud hosting. (A local Streamlit frontend was added later, in `app/`.)

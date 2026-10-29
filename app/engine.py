@@ -4,10 +4,14 @@ Nothing here invents results. The condition prediction comes from the saved v2 m
 (frozen MobileNetV2 embeddings + linear head, ``scripts/train_deep.py``); hair
 measurements come from ``scalptrack.pipeline.analyze_image``.
 
-Every prediction passes two gates calibrated on the VALIDATION split:
+Every photo goes through these checks, in order:
 1. Out-of-distribution: the photo must resemble the training images (cosine similarity of its
-   embedding to the nearest training image).
-2. Confidence: the top class score must reach the confidence threshold.
+   embedding to the nearest training image, threshold calibrated on validation).
+2. Healthy: if the model's probability for the "healthy" class reaches ``healthy_threshold``, the
+   scalp is reported as healthy-looking.
+3. Match level: each condition gets its own match score (``deep.MatchScorer``; scores do not add up
+   to 100%). A condition is reported if its match reaches the match level, chosen on validation
+   to keep recall high (the true condition is reported for >= 95% of validation photos).
 """
 
 from __future__ import annotations
@@ -45,12 +49,13 @@ class UploadError(ValueError):
 class Resources:
     cfg: dict
     bundle: dict | None
-    threshold: float | None  # confidence threshold (validation-calibrated)
+    threshold: float | None  # match level: minimum per-condition match score to report a condition
     ood_threshold: float | None  # nearest-train cosine similarity threshold (validation-calibrated)
     test_metrics: dict | None
     report: dict = field(default_factory=dict)
     model_error: str | None = None
     backbone: deep.Backbone | None = None
+    healthy_threshold: float | None = None  # None when the model was trained without a healthy class
 
 
 def load_resources() -> Resources:
@@ -62,13 +67,16 @@ def load_resources() -> Resources:
         return Resources(cfg, None, None, None, None, model_error=(
             f"No trained model at {path}. Run: python scripts/embed_dataset.py, then python scripts/train_deep.py"))
     bundle = joblib.load(path)
-    bundle["train_embeddings"] = deep.normalise(bundle["train_embeddings"].astype(np.float32))
+    if "match_scorer" not in bundle:
+        return Resources(cfg, None, None, None, None, model_error=(
+            f"The model at {path} is outdated (no per-condition match scores). Re-run: python scripts/train_deep.py"))
     report_path = project_path(cfg, "results", "model_v2", "metrics.json")
     report = json.loads(report_path.read_text(encoding="utf-8")) if report_path.is_file() else {}
     return Resources(
         cfg=cfg,
         bundle=bundle,
-        threshold=float(bundle["confidence_threshold"]),
+        threshold=float(bundle["match_level"]),
+        healthy_threshold=float(bundle["healthy_threshold"]) if bundle.get("healthy_label") else None,
         ood_threshold=float(bundle["ood_similarity_threshold"]),
         test_metrics=report.get("after_embedding_head_v2_split"),
         report=report,
@@ -110,21 +118,24 @@ def decode_upload(data: bytes) -> np.ndarray:
 
 
 def classify(rgb: np.ndarray, res: Resources) -> dict:
-    """Embedding -> OOD gate -> class scores -> confidence gate."""
+    """Embedding -> OOD gate -> healthy check -> independent per-condition match scores -> match level."""
     b = res.bundle
+    scorer: deep.MatchScorer = b["match_scorer"]
     emb = res.backbone.embed([rgb])
-    similarity = float((emb @ b["train_embeddings"].T).max())
-    proba = b["model"].predict_proba(emb)[0]
-    scores = dict(sorted(zip(b["model"].classes_, map(float, proba)), key=lambda kv: -kv[1]))
+    similarity = float(scorer.nearest_similarity(emb)[0])
+    scores = dict(sorted(zip(scorer.match_classes, map(float, scorer(emb)[0])), key=lambda kv: -kv[1]))
     top_label, top = next(iter(scores.items()))
+    p_healthy = float(scorer.healthy_probability(emb)[0])
     if similarity < res.ood_threshold:
         verdict = "ood"
+    elif res.healthy_threshold is not None and p_healthy >= res.healthy_threshold:
+        verdict = "healthy"
     elif top < res.threshold:
-        verdict = "uncertain"
+        verdict = "no_match"
     else:
         verdict = "match"
     return {"status": "ok", "predicted_label": top_label, "class_scores": scores, "top_score": top,
-            "similarity": similarity, "verdict": verdict, "model_id": b["model_id"]}
+            "p_healthy": p_healthy, "similarity": similarity, "verdict": verdict, "model_id": b["model_id"]}
 
 
 def analyze(rgb: np.ndarray, res: Resources) -> dict:
@@ -134,8 +145,8 @@ def analyze(rgb: np.ndarray, res: Resources) -> dict:
         raise UploadError(result.get("error", "Analysis failed."))
     cls = classify(rgb, res)
     result["classification"] = {**result["classification"], **cls, "task_mode": "image_classification",
-                                "reason": "v2 model: frozen MobileNetV2 embeddings + linear head"}
-    return {"result": result, "verdict": cls["verdict"], "top_score": cls["top_score"],
+                                "reason": "v2 model: frozen MobileNetV2 embeddings + linear head, per-condition match scores"}
+    return {"result": result, "verdict": cls["verdict"], "top_score": cls["top_score"], "p_healthy": cls["p_healthy"],
             "similarity": cls["similarity"], "overlay": _overlay(result)}
 
 

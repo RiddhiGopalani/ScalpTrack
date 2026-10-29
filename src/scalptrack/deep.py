@@ -111,6 +111,63 @@ def similar_pairs(emb: np.ndarray, threshold: float, chunk: int = 1024) -> np.nd
     return np.concatenate(pairs) if pairs else np.zeros((0, 2), dtype=np.int64)
 
 
+class MatchScorer:
+    """Per-condition match scores that do NOT have to add up to 100%.
+
+    Softmax scores always sum to 1, so a photo unlike every condition still puts most of its score
+    on one class. Here each condition is scored on its own:
+
+    raw_c   = log p_head(c) + weight * mean cosine of the k most similar TRAIN photos of class c
+    match_c = share of VALIDATION photos of class c whose raw_c is at most this photo's raw_c
+              (a conformal p-value), times (1 - p_head(healthy)) when the head has a healthy class
+
+    A typical photo of condition c gets a match around 50% for c. A photo that is atypical for every
+    condition, or that the head considers healthy, gets a low match for all of them. Only classes
+    calibrated with validation photos get a match score (``match_classes``).
+    """
+
+    def __init__(self, head, train_emb: np.ndarray, train_y: np.ndarray, k: int = 5, weight: float = 20.0,
+                 healthy_label: str | None = None):
+        self.head, self.k, self.weight = head, k, weight
+        self.classes = list(head.classes_)
+        self.healthy_label = healthy_label if healthy_label in self.classes else None
+        emb = normalise(train_emb).astype(np.float16)
+        self.train_emb = {c: emb[np.asarray(train_y) == c] for c in self.classes}
+        self.reference: dict[str, np.ndarray] = {}
+
+    @property
+    def match_classes(self) -> list[str]:
+        return list(self.reference)
+
+    def nearest_similarity(self, x: np.ndarray) -> np.ndarray:
+        """Cosine similarity of each row to its nearest training photo (any class)."""
+        x = normalise(x)
+        return np.max([(x @ e.astype(np.float32).T).max(1) for e in self.train_emb.values()], axis=0)
+
+    def healthy_probability(self, x: np.ndarray) -> np.ndarray:
+        if self.healthy_label is None:
+            return np.zeros(len(x))
+        return self.head.predict_proba(normalise(x))[:, self.classes.index(self.healthy_label)]
+
+    def raw(self, x: np.ndarray) -> np.ndarray:
+        x = normalise(x)
+        sim = np.stack([np.sort(x @ self.train_emb[c].astype(np.float32).T, 1)[:, -self.k:].mean(1) for c in self.classes], 1)
+        return np.log(self.head.predict_proba(x) + 1e-9) + self.weight * sim
+
+    def calibrate(self, x_val: np.ndarray, y_val: np.ndarray) -> MatchScorer:
+        raw, y_val = self.raw(x_val), np.asarray(y_val)
+        self.reference = {c: np.sort(raw[y_val == c, j]) for j, c in enumerate(self.classes) if (y_val == c).any()}
+        return self
+
+    def __call__(self, x: np.ndarray) -> np.ndarray:
+        """Match scores, one column per ``match_classes`` entry."""
+        raw = self.raw(x)
+        out = np.zeros((len(x), len(self.reference)))
+        for j, (c, ref) in enumerate(self.reference.items()):
+            out[:, j] = np.searchsorted(ref, raw[:, self.classes.index(c)], side="right") / (len(ref) + 1)
+        return out * (1.0 - self.healthy_probability(x))[:, None]
+
+
 def occlude(rgb: np.ndarray, keep: str, fraction: float = 0.6) -> np.ndarray:
     """Grey out the centre (``keep='border'``) or the border (``keep='centre'``) - a shortcut-learning probe."""
     h, w = rgb.shape[:2]

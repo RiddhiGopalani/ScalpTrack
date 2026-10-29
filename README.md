@@ -152,6 +152,31 @@ more signal, but the model still draws a fair amount from context: framing, ligh
 coffee, an astronaut, plus random noise) were flagged as "not recognised". Only 1.0% of genuine test
 photos were wrongly flagged.
 
+**Per-condition match scores.** Softmax scores always add up to 100%, so a photo unlike every
+condition, such as a healthy scalp, would still put most of its score on one class (often male pattern
+baldness). The app therefore shows an independent match score for each condition (`deep.MatchScorer`):
+the head's log-probability plus the similarity to that condition's training photos, ranked against that
+condition's validation photos and scaled down by the healthy probability. A condition is reported from a
+**match level of 5%**, the highest level that still reports the true condition for at least 95% of
+validation photos (high recall by design).
+
+**Healthy class.** The Kaggle data has no healthy scalps, so 9 unique healthy-scalp photos were added to
+`healthy_hair/` (10 files, one byte-identical copy dropped). They are trained as an 11th class. Nine photos
+are too few for a held-out split, so they are evaluated by **leave-one-out** (each photo scored by a model
+trained without it). A scalp is reported as healthy when the healthy probability reaches 50%.
+
+| Check | Result |
+|---|---|
+| Healthy photos called healthy (leave-one-out) | **6 / 9** (the other 3 still show a condition) |
+| Highest condition score on those 6 | at most 12% |
+| Test condition photos: true condition reported (recall) | **84%** (validation 95%) |
+| Test condition photos wrongly called healthy | 0.05% (1 of 2,111) |
+| Top match correct on test | 52% (head argmax: 55%) |
+| Non-scalp probe images flagged as "not recognised" | 11 / 11 |
+
+Nine photos is a very small sample, so the 6/9 has a wide uncertainty: the 95% Wilson interval for healthy recall is about 35–88%. More
+healthy photos (ideally 100+ from different people) would make this class reliable.
+
 Figures: `outputs/figures/model_v2/` (before/after confusion matrices, correct and incorrect test
 examples). Full metrics: `outputs/results/model_v2/metrics.json`.
 
@@ -222,16 +247,16 @@ inputs, and ends with limitations and a conclusion.
 ScalpTrack includes a Streamlit web app (`app/`). You upload a scalp photo, or pick a sample from the
 held-out test set, and the app runs the saved model and the full pipeline. It shows:
 
-* the closest condition pattern and its score, or "no confident match";
-* a plain-language explanation and the score for every condition;
+* a matched condition, "healthy-looking scalp", "no condition matched", or "photo not recognised";
+* a plain-language explanation and an independent match score for every condition;
 * the hair measurements (in pixels) with an overlay image;
 * a general care plan (daily and weekly routine, nutrition), what to expect, and when to see a dermatologist.
 
-The confidence level is calibrated on the validation split. The model has no "healthy" class, so the
-app never claims a scalp is healthy.
+The match level and the out-of-distribution threshold are calibrated on the validation split. The
+healthy class comes from only 9 photos, so "healthy-looking" is a rough indication, never a check-up.
 
-The app needs a trained model. Run the dataset setup, then `python scripts/audit_dataset.py` and
-`python scripts/train_classifier.py` (see [HOW_TO_RUN.md](HOW_TO_RUN.md)). Then, from the project root:
+The app needs the v2 model. Run the dataset setup, `python scripts/audit_dataset.py`,
+`python scripts/embed_dataset.py` and `python scripts/train_deep.py` (see [HOW_TO_RUN.md](HOW_TO_RUN.md)). Then, from the project root:
 
 ```bash
 .venv\Scripts\activate
@@ -301,8 +326,9 @@ then `pipeline.analyze_image`, which is written as eight numbered steps.
   with each other.
 * **Partly context-driven.** The border-only probe still scores 0.37, so lighting and framing influence
   predictions.
-* **Labels are the publisher's folders**, without clinical adjudication. There is no "healthy" class, so
-  the app cannot confirm that a scalp is healthy.
+* **Labels are the publisher's folders**, without clinical adjudication.
+* **The healthy class is tiny.** It is learned from 9 user-added photos (6/9 recognised in leave-one-out),
+  so a "healthy-looking" result is a rough indication and a missed healthy scalp may still show a condition.
 * **What would actually fix this:** several thousand *independent* scalp photos per condition (not
   augmentations), with dermatologist-confirmed labels, patient IDs for grouping, a healthy-scalp class, and
   an external test set from a different source. Public candidates must still be checked for these

@@ -113,6 +113,9 @@ def scan_source(source_cfg: dict, root: Path, extensions=DEFAULT_EXTENSIONS) -> 
         raise DatasetMissingError(str(base))
     exts = {e.lower() for e in extensions}
     all_files = sorted(p for p in base.rglob("*") if p.is_file())
+    if source_cfg.get("healthy_dir"):  # extra healthy photos are handled by train_deep.py, not the audit
+        skip = (base / source_cfg["healthy_dir"]).resolve()
+        all_files = [p for p in all_files if not p.resolve().is_relative_to(skip)]
     images = [p for p in all_files if p.suffix.lower() in exts]
     others = [str(p.relative_to(base)) for p in all_files if p.suffix.lower() not in exts]
     if not images:

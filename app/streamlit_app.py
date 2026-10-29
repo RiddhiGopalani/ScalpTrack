@@ -9,9 +9,8 @@ import html
 import time
 from pathlib import Path
 
-import streamlit as st
-
 import engine
+import streamlit as st
 from condition_info import CONDITIONS, GENERAL_ROUTINE, RED_FLAGS
 
 APP_DIR = Path(__file__).resolve().parent
@@ -160,7 +159,7 @@ r = analysis["result"]
 cls = r["classification"]
 scores: dict = cls["class_scores"]
 top_key = cls["predicted_label"]
-info = CONDITIONS.get(top_key, {}) if analysis["verdict"] != "ood" else {}
+info = CONDITIONS.get(top_key, {}) if analysis["verdict"] not in ("ood", "healthy") else {}
 verdict = analysis["verdict"]
 top = analysis["top_score"]
 quality = r["quality"]
@@ -168,8 +167,9 @@ quality = r["quality"]
 st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
 st.markdown("## 2 · Your results")
 
-ring_color = {"match": "#B83255", "uncertain": "#B7791F", "ood": "#8A93A5", "unavailable": "#8A93A5"}[verdict]
-deg = int(360 * (top or 0))
+ring_color = {"match": "#B83255", "healthy": "#0E7C7B", "no_match": "#0E7C7B", "ood": "#8A93A5", "unavailable": "#8A93A5"}[verdict]
+ring_value = analysis["p_healthy"] if verdict == "healthy" else top
+deg = int(360 * (ring_value or 0))
 if verdict == "ood":
     tag = '<span class="st-tag tag-slate">Photo not recognised</span>'
     title = "This photo does not look like the scalp images the model knows"
@@ -182,16 +182,24 @@ elif verdict == "match":
     tag = '<span class="st-tag tag-rose">Potential concern detected</span>'
     title = f"Pattern resembling {html.escape(info.get('name', top_key))}"
     body = (
-        f"{html.escape(info.get('summary', ''))} The model's score for this condition is "
-        f"<b>{pct(top)}</b>, which passes the confidence level used for confident matches."
+        f"{html.escape(info.get('summary', ''))} Its match score for this condition is "
+        f"<b>{pct(top)}</b>, above the {pct(RES.threshold)} needed to report a condition."
     )
-elif verdict == "uncertain":
-    tag = '<span class="st-tag tag-amber">No confident match</span>'
-    title = "The model is not confident about this photo"
+elif verdict == "healthy":
+    tag = '<span class="st-tag tag-teal">Healthy-looking scalp</span>'
+    title = "This scalp looks healthy to the model"
     body = (
-        f"The closest pattern is <b>{html.escape(info.get('name', top_key))}</b> at only {pct(top)}, below the "
-        f"confidence level ({pct(RES.threshold)}). This can mean the scalp looks healthy, shows a condition the "
-        "model was not trained on, or the photo is unsuitable. Treat the details below as low-confidence."
+        f"The model's score for a healthy scalp is <b>{pct(analysis['p_healthy'])}</b>, and every condition scores low "
+        f"(highest: {html.escape(CONDITIONS.get(top_key, {}).get('name', top_key).split(' (')[0])} at {pct(top)}). "
+        "The healthy class was learned from only a handful of photos, so treat this as a rough indication, not a check-up."
+    )
+elif verdict == "no_match":
+    tag = '<span class="st-tag tag-teal">No condition matched</span>'
+    title = "This photo does not match any of the ten conditions"
+    body = (
+        f"Every condition scored below {pct(RES.threshold)} (highest: {html.escape(info.get('name', top_key).split(' (')[0])} "
+        f"at {pct(top)}). The photo is less typical of each condition than almost all of that condition's "
+        "validation photos. This is what a healthy-looking scalp should give, but the model cannot confirm health."
     )
 else:
     tag = '<span class="st-tag tag-slate">Classification unavailable</span>'
@@ -199,15 +207,21 @@ else:
     body = html.escape(cls.get("reason", ""))
 
 html_block(f"""
-<div class="st-verdict {verdict}">
-  <div class="ring" style="background: conic-gradient({ring_color} {deg}deg, #EFECE5 {deg}deg);"><span>{pct(top)}</span></div>
+<div class="st-verdict {'no_match' if verdict == 'healthy' else verdict}">
+  <div class="ring" style="background: conic-gradient({ring_color} {deg}deg, #EFECE5 {deg}deg);"><span>{pct(ring_value)}</span></div>
   <div>{tag}<h2>{title}</h2><p>{body}</p></div>
 </div>""")
 
-html_block("""
-<div class="st-note info"><b>About "healthy".</b> This model was trained only on photos of ten scalp
-conditions. It has no "healthy scalp" category, so it <b>cannot confirm that a scalp is healthy</b>. A low
-score for every condition is the closest it can come.</div>""")
+if RES.healthy_threshold is None:
+    html_block("""
+    <div class="st-note info"><b>About "healthy".</b> This model was trained only on photos of ten scalp
+    conditions. It has no "healthy scalp" category, so it <b>cannot confirm that a scalp is healthy</b>. Each condition
+    is scored separately (scores do not add up to 100%), so a low score for every condition is the closest it can come.</div>""")
+else:
+    html_block(f"""
+    <div class="st-note info"><b>About "healthy".</b> The healthy-scalp class was learned from only
+    {int(RES.report.get('healthy', {}).get('unique_photos', 0))} photos, against hundreds per condition, so it is a rough
+    indication only. Each condition is scored separately (scores do not add up to 100%).</div>""")
 
 if quality["flags"]:
     flags = ", ".join(f.replace("_", " ") for f in quality["flags"])
@@ -221,8 +235,8 @@ hc, sw = r["hair_count"], r["shaft_width"]
 width_txt = "—" if sw["median_px"] is None else f"{sw['median_px']:.1f} px"
 html_block(f"""
 <div class="st-stats">
-  <div class="st-stat"><div class="st-label">Closest pattern</div><div class="v" style="font-size:1.1rem">{html.escape(info.get('name', '—').split(' (')[0])}</div><div class="d">{html.escape(info.get('category', ''))}</div></div>
-  <div class="st-stat"><div class="st-label">Model score</div><div class="v">{pct(top)}</div><div class="d">confident from {pct(RES.threshold)}</div></div>
+  <div class="st-stat"><div class="st-label">{'Matched pattern' if verdict == 'match' else 'Result' if verdict == 'healthy' else 'Closest pattern'}</div><div class="v" style="font-size:1.1rem">{'Healthy-looking' if verdict == 'healthy' else html.escape(info.get('name', '—').split(' (')[0])}</div><div class="d">{f"healthy score {pct(analysis['p_healthy'])}" if verdict == 'healthy' else html.escape(info.get('category', ''))}</div></div>
+  <div class="st-stat"><div class="st-label">Highest match</div><div class="v">{pct(top)}</div><div class="d">reported from {pct(RES.threshold)}</div></div>
   <div class="st-stat"><div class="st-label">Image quality</div><div class="v">{'Good' if quality['measurement_eligible'] and not quality['flags'] else 'Check'}</div><div class="d">sharpness {quality['laplacian_var']:.0f} (Laplacian var.)</div></div>
   <div class="st-stat"><div class="st-label">Hair crossings</div><div class="v">{hc['value'] if hc['value'] is not None else '—'}</div><div class="d">along the counting line · {html.escape(hc['status'])}</div></div>
 </div>""")
@@ -235,19 +249,31 @@ with tab_overview:
     c1, c2 = st.columns([1.1, 1], gap="large")
     with c1:
         signs = bullet_list(info.get("signs", []))
-        html_block(f"""
+        if verdict == "healthy":
+            html_block(f"""
+            <div class="st-card"><div class="st-label">Result</div><h3>Healthy-looking scalp</h3>
+            <p style="color:var(--ink-soft);line-height:1.6">The photo looks more like the healthy-scalp photos than like any of the
+            ten conditions (healthy score {pct(analysis['p_healthy'])}). Keep a gentle routine, and re-check if you notice itching,
+            flaking, redness or hair loss.</p>{bullet_list(GENERAL_ROUTINE["daily"][:3])}</div>""")
+        elif info:
+            html_block(f"""
         <div class="st-card"><div class="st-label">{html.escape(info.get('category', ''))}</div>
         <h3>{html.escape(info.get('name', top_key))}</h3>
         <p style="color:var(--ink-soft);line-height:1.6">{html.escape(info.get('summary', ''))}</p>
         <div class="st-label" style="margin-top:14px">Typical signs</div>{signs}</div>""")
+        else:
+            html_block("""<div class="st-card"><h3>No condition reported</h3><p style="color:var(--ink-soft);line-height:1.6">
+            There is no condition-specific information for this photo. If you have symptoms, a dermatologist can assess them.</p></div>""")
     with c2:
         bars = "".join(
             f'<div class="st-bar {"top" if i == 0 else ""}"><div class="row"><span>{html.escape(CONDITIONS.get(k, {}).get("name", k).split(" (")[0])}</span>'
             f'<span>{pct(v)}</span></div><div class="track"><div class="fill" style="width:{100 * v:.1f}%"></div></div></div>'
             for i, (k, v) in enumerate(scores.items())
         )
-        html_block(f"""<div class="st-card"><h3>Score for every condition</h3>
-        <div class="sub">How strongly the photo resembles each condition the model knows. These are model scores, not probabilities of having the condition.</div>{bars}</div>""")
+        html_block(f"""<div class="st-card"><h3>Match score for every condition</h3>
+        <div class="sub">Each condition is scored on its own, so these do not add up to 100%. A score of 50% means the photo is as
+        typical of that condition as an average validation photo of it. A condition is reported only from {pct(RES.threshold)}.
+        These are not probabilities of having the condition.</div>{bars}</div>""")
 
 with tab_measure:
     c1, c2 = st.columns([1.15, 1], gap="large")
@@ -282,7 +308,7 @@ with tab_plan:
             html_block(f"""<div class="st-card"><div class="st-label">For a pattern like {html.escape(info['name'].split(' (')[0])}</div>
             <h3>Care suggestions</h3>{bullet_list(info['care'])}</div>""")
         else:
-            html_block("""<div class="st-card"><h3>Care suggestions</h3><div class="sub">No confident match, so these are
+            html_block("""<div class="st-card"><h3>Care suggestions</h3><div class="sub">No condition matched, so these are
             general scalp-care basics rather than condition-specific advice.</div>""" + bullet_list(GENERAL_ROUTINE["daily"][:3]) + "</div>")
         html_block(f'<div class="st-card"><h3>Diet & nutrition</h3><div class="sub">General guidance for healthy hair, not a treatment.</div>{bullet_list(GENERAL_ROUTINE["nutrition"])}</div>')
     with c2:
@@ -291,7 +317,7 @@ with tab_plan:
 
 with tab_outlook:
     expectation = info.get("expectations", "") if verdict == "match" else (
-        "Without a confident match there is no condition-specific outlook. If symptoms are present, a clinician's "
+        "Without a matched condition there is no condition-specific outlook. If symptoms are present, a clinician's "
         "assessment is the reliable next step."
     )
     html_block(f"""<div class="st-card"><h3>What you may reasonably expect</h3>
@@ -320,14 +346,15 @@ with tab_about:
     MobileNetV2 network pretrained on ImageNet. A linear classifier trained on the public Kaggle "Hair Diseases" dataset
     then scores {html.escape(str(len(RES.bundle['classes'])))} conditions. The training images were checked for duplicates,
     and copies of the same photo were kept together in one split. Two checks calibrated on held-out validation images
-    protect the result: the photo must resemble the training images, and the top score must reach
+    protect the result: the photo must resemble the training images, and a condition is reported only if its
+    own match score (how typical the photo is of that condition, compared with its validation photos) reaches
     {pct(RES.threshold)}.</p>
     <div class="st-label" style="margin-top:12px">Limitations you should know</div>
     {bullet_list([
         f"On held-out test photos kept apart from training by copy group, the model scored {pct(tm.get('accuracy'))} accuracy. "
         "Real-world photos from other cameras and people were not part of that test, so expect lower accuracy on them.",
         "The labels come from the dataset publisher, not from clinical diagnosis, and some conditions look very similar.",
-        "There is no 'healthy scalp' category, so the model cannot confirm that a scalp is healthy.",
+        "The healthy-scalp class was learned from very few user-added photos, so it is a rough indication and cannot confirm health." if RES.healthy_threshold is not None else "There is no 'healthy scalp' category, so the model cannot confirm that a scalp is healthy.",
         "Photos unlike the training images (other lighting, other skin and hair types, whole-head shots) may give unreliable results.",
         "Hair measurements are in pixels. Physical units such as micrometres or hairs per cm² need calibrated imaging.",
         "This is an educational research project, not a medical device. It does not diagnose, and its guidance is general.",
