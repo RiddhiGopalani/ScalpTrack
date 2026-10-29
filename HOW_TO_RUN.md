@@ -109,6 +109,25 @@ Outputs:
 
 Features are cached in `data/derived/`, so re-running is fast.
 
+### 4.2b Train the v2 model used by the app (about 15 minutes on CPU)
+
+```bash
+python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+```
+
+```bash
+python scripts/embed_dataset.py
+```
+
+```bash
+python scripts/train_deep.py
+```
+
+`embed_dataset.py` extracts frozen MobileNetV2 features for all images (about 5 minutes, cached in
+`data/derived/`). `train_deep.py` builds the strict copy-grouped split, trains and selects the model on
+validation, evaluates the test set once, and saves `models/kaggle_hair_diseases/deep_bundle.joblib`
+plus `outputs/results/model_v2/metrics.json`.
+
 ### 4.3 Run all notebooks (about 5–10 minutes)
 
 ```bash
@@ -132,7 +151,15 @@ python scripts/run_pipeline.py --image "data\raw\kaggle_hair_diseases\Hair Disea
 To analyse only part of the image, add `--roi X0 Y0 X1 Y1` (pixel coordinates in the original image).
 The result panel, JSON and CSV are written to `outputs/results/pipeline/`.
 
-### 4.5 Summary report
+### 4.5 Web app
+
+```bash
+python -m streamlit run app/streamlit_app.py
+```
+
+Open <http://localhost:8501>, then upload a scalp photo or choose a sample image. It needs the v2 model from step 4.2b.
+
+### 4.6 Summary report
 
 ```bash
 python scripts/generate_report.py --run-tests

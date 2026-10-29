@@ -1,0 +1,421 @@
+{
+  "dataset": {
+    "source": "kaggle_hair_diseases",
+    "usable_images": 11849,
+    "split_v2_counts": {
+      "test": {
+        "alopecia_areata": 179,
+        "contact_dermatitis": 331,
+        "folliculitis": 174,
+        "head_lice": 319,
+        "lichen_planus": 189,
+        "male_pattern_baldness": 187,
+        "psoriasis": 162,
+        "seborrheic_dermatitis": 191,
+        "telogen_effluvium": 197,
+        "tinea_capitis": 182
+      },
+      "train": {
+        "alopecia_areata": 847,
+        "contact_dermatitis": 609,
+        "folliculitis": 814,
+        "head_lice": 725,
+        "lichen_planus": 796,
+        "male_pattern_baldness": 825,
+        "psoriasis": 777,
+        "seborrheic_dermatitis": 769,
+        "telogen_effluvium": 825,
+        "tinea_capitis": 805
+      },
+      "validation": {
+        "alopecia_areata": 174,
+        "contact_dermatitis": 243,
+        "folliculitis": 212,
+        "head_lice": 156,
+        "lichen_planus": 215,
+        "male_pattern_baldness": 188,
+        "psoriasis": 195,
+        "seborrheic_dermatitis": 172,
+        "telogen_effluvium": 178,
+        "tinea_capitis": 213
+      }
+    }
+  },
+  "leakage": {
+    "embedding_candidates": 108714,
+    "orb_confirmed_new_copy_pairs": 104679,
+    "groups_before": 7342,
+    "groups_after": 920,
+    "largest_group_after": 237,
+    "new_label_conflict_images_excluded": 0,
+    "test_with_train_neighbour_cos>=0.92_v1": 0.449944382647386,
+    "test_with_train_neighbour_cos>=0.92_v2": 0.0028422548555187117,
+    "median_nearest_train_cos_v1": 0.9153978824615479,
+    "median_nearest_train_cos_v2": 0.7571932077407837
+  },
+  "before_old_rf_v2_split": {
+    "accuracy": 0.4689720511605874,
+    "balanced_accuracy": 0.4692805773880407,
+    "macro_f1": 0.4410186931622787,
+    "weighted_f1": 0.4538341464131965
+  },
+  "after_embedding_head_v2_split": {
+    "accuracy": 0.5537659876835623,
+    "balanced_accuracy": 0.5725333373792386,
+    "macro_f1": 0.5443271194270862,
+    "weighted_f1": 0.544432053383988
+  },
+  "after_per_class": {
+    "alopecia_areata": {
+      "precision": 0.717948717948718,
+      "recall": 0.4692737430167598,
+      "f1-score": 0.5675675675675675,
+      "support": 179.0
+    },
+    "contact_dermatitis": {
+      "precision": 0.9259259259259259,
+      "recall": 0.3021148036253776,
+      "f1-score": 0.45558086560364464,
+      "support": 331.0
+    },
+    "folliculitis": {
+      "precision": 0.9444444444444444,
+      "recall": 0.4885057471264368,
+      "f1-score": 0.6439393939393939,
+      "support": 174.0
+    },
+    "head_lice": {
+      "precision": 0.7529411764705882,
+      "recall": 0.6018808777429467,
+      "f1-score": 0.6689895470383276,
+      "support": 319.0
+    },
+    "lichen_planus": {
+      "precision": 0.4146341463414634,
+      "recall": 0.4497354497354497,
+      "f1-score": 0.43147208121827413,
+      "support": 189.0
+    },
+    "male_pattern_baldness": {
+      "precision": 0.7131147540983607,
+      "recall": 0.93048128342246,
+      "f1-score": 0.8074245939675174,
+      "support": 187.0
+    },
+    "psoriasis": {
+      "precision": 0.4031620553359684,
+      "recall": 0.6296296296296297,
+      "f1-score": 0.491566265060241,
+      "support": 162.0
+    },
+    "seborrheic_dermatitis": {
+      "precision": 0.42592592592592593,
+      "recall": 0.7225130890052356,
+      "f1-score": 0.5359223300970873,
+      "support": 191.0
+    },
+    "telogen_effluvium": {
+      "precision": 0.3445378151260504,
+      "recall": 0.20812182741116753,
+      "f1-score": 0.25949367088607594,
+      "support": 197.0
+    },
+    "tinea_capitis": {
+      "precision": 0.42424242424242425,
+      "recall": 0.9230769230769231,
+      "f1-score": 0.5813148788927336,
+      "support": 182.0
+    },
+    "accuracy": 0.5537659876835623,
+    "macro avg": {
+      "precision": 0.6066877385859869,
+      "recall": 0.5725333373792386,
+      "f1-score": 0.5443271194270862,
+      "support": 2111.0
+    },
+    "weighted avg": {
+      "precision": 0.636183969163863,
+      "recall": 0.5537659876835623,
+      "f1-score": 0.544432053383988,
+      "support": 2111.0
+    }
+  },
+  "after_confusion_matrix": [
+    [
+      84,
+      0,
+      0,
+      0,
+      0,
+      29,
+      0,
+      1,
+      31,
+      34
+    ],
+    [
+      0,
+      100,
+      2,
+      19,
+      9,
+      0,
+      72,
+      77,
+      0,
+      52
+    ],
+    [
+      0,
+      0,
+      85,
+      1,
+      44,
+      0,
+      2,
+      4,
+      0,
+      38
+    ],
+    [
+      0,
+      6,
+      0,
+      192,
+      25,
+      0,
+      9,
+      53,
+      30,
+      4
+    ],
+    [
+      2,
+      0,
+      0,
+      1,
+      85,
+      11,
+      22,
+      15,
+      0,
+      53
+    ],
+    [
+      4,
+      0,
+      0,
+      0,
+      0,
+      174,
+      0,
+      0,
+      9,
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      11,
+      1,
+      0,
+      102,
+      14,
+      6,
+      27
+    ],
+    [
+      0,
+      0,
+      3,
+      30,
+      0,
+      0,
+      16,
+      138,
+      0,
+      4
+    ],
+    [
+      25,
+      1,
+      0,
+      0,
+      41,
+      30,
+      28,
+      15,
+      41,
+      16
+    ],
+    [
+      2,
+      0,
+      0,
+      1,
+      0,
+      0,
+      2,
+      7,
+      2,
+      168
+    ]
+  ],
+  "classes": [
+    "alopecia_areata",
+    "contact_dermatitis",
+    "folliculitis",
+    "head_lice",
+    "lichen_planus",
+    "male_pattern_baldness",
+    "psoriasis",
+    "seborrheic_dermatitis",
+    "telogen_effluvium",
+    "tinea_capitis"
+  ],
+  "memorisation_1nn_test_accuracy": 0.5504500236854571,
+  "validation_selection": [
+    {
+      "model": "linear_head_C0.003",
+      "val_macro_f1": 0.5310164912237723,
+      "val_accuracy": 0.5323741007194245
+    },
+    {
+      "model": "linear_head_C0.01",
+      "val_macro_f1": 0.5602370943477466,
+      "val_accuracy": 0.5590955806783144
+    },
+    {
+      "model": "linear_head_C0.03",
+      "val_macro_f1": 0.5776012456489414,
+      "val_accuracy": 0.578622816032888
+    },
+    {
+      "model": "linear_head_C0.1",
+      "val_macro_f1": 0.5946199720124785,
+      "val_accuracy": 0.5976361767728674
+    },
+    {
+      "model": "linear_head_C0.3",
+      "val_macro_f1": 0.5748218211793172,
+      "val_accuracy": 0.5801644398766701
+    },
+    {
+      "model": "linear_head_C1",
+      "val_macro_f1": 0.5933507104665043,
+      "val_accuracy": 0.5986639260020555
+    },
+    {
+      "model": "old_feature_random_forest",
+      "val_macro_f1": 0.4474300741008097,
+      "val_accuracy": 0.4527235354573484
+    },
+    {
+      "model": "1nn_memorisation_reference",
+      "val_macro_f1": 0.6152053048342034,
+      "val_accuracy": NaN
+    }
+  ],
+  "selected_C": 0.1,
+  "thresholds": {
+    "confidence": 0.5456126928329468,
+    "ood_similarity": 0.5737450122833252,
+    "val_accuracy_when_confident": 0.6718047527296083
+  },
+  "test_confidence_gating": {
+    "coverage": 0.7565135007105637,
+    "accuracy_when_confident": 0.6368190356919223,
+    "accuracy_when_uncertain": 0.29571984435797666
+  },
+  "shortcut_probe_test_accuracy": {
+    "full_image": 0.5537659876835623,
+    "keep_centre_only": 0.4817621980104216,
+    "keep_border_only": 0.3694931312174325
+  },
+  "ood_probe": {
+    "summary": {
+      "ood_images_flagged": "11/11",
+      "test_images_wrongly_flagged_ood": 0.00994789199431549
+    },
+    "images": [
+      {
+        "image": "astronaut",
+        "nearest_train_similarity": 0.3346066474914551,
+        "flagged_ood": true,
+        "top_score": 0.9703086018562317,
+        "would_be_confident": false
+      },
+      {
+        "image": "coffee",
+        "nearest_train_similarity": 0.24576808512210846,
+        "flagged_ood": true,
+        "top_score": 0.40394264459609985,
+        "would_be_confident": false
+      },
+      {
+        "image": "chelsea",
+        "nearest_train_similarity": 0.3492996096611023,
+        "flagged_ood": true,
+        "top_score": 0.7322869300842285,
+        "would_be_confident": false
+      },
+      {
+        "image": "rocket",
+        "nearest_train_similarity": 0.22127018868923187,
+        "flagged_ood": true,
+        "top_score": 0.8446485996246338,
+        "would_be_confident": false
+      },
+      {
+        "image": "camera",
+        "nearest_train_similarity": 0.33195722103118896,
+        "flagged_ood": true,
+        "top_score": 0.9807857871055603,
+        "would_be_confident": false
+      },
+      {
+        "image": "coins",
+        "nearest_train_similarity": 0.2823880910873413,
+        "flagged_ood": true,
+        "top_score": 0.9688355922698975,
+        "would_be_confident": false
+      },
+      {
+        "image": "brick",
+        "nearest_train_similarity": 0.2633765935897827,
+        "flagged_ood": true,
+        "top_score": 0.8341962099075317,
+        "would_be_confident": false
+      },
+      {
+        "image": "grass",
+        "nearest_train_similarity": 0.30572253465652466,
+        "flagged_ood": true,
+        "top_score": 0.7335865497589111,
+        "would_be_confident": false
+      },
+      {
+        "image": "gravel",
+        "nearest_train_similarity": 0.315590500831604,
+        "flagged_ood": true,
+        "top_score": 0.6274884343147278,
+        "would_be_confident": false
+      },
+      {
+        "image": "hubble_deep_field",
+        "nearest_train_similarity": 0.39003002643585205,
+        "flagged_ood": true,
+        "top_score": 0.9932036399841309,
+        "would_be_confident": false
+      },
+      {
+        "image": "random_noise",
+        "nearest_train_similarity": 0.29283010959625244,
+        "flagged_ood": true,
+        "top_score": 0.5454370379447937,
+        "would_be_confident": false
+      }
+    ]
+  }
+}

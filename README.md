@@ -10,7 +10,7 @@ Every number is labelled with what it means and how far it can be trusted.
 > **Not a medical device.** Predictions are scores for the publisher's folder labels, produced by an
 > experimental classifier. They are not diagnoses.
 
-**Quick start:** see [HOW_TO_RUN.md](HOW_TO_RUN.md).
+**Quick start:** see [HOW_TO_RUN.md](HOW_TO_RUN.md). **Web app:** see [Run the web app](#run-the-web-app-windows).
 
 ---
 
@@ -59,10 +59,10 @@ pipeline from raw images to an explained result:
 2. **Explainable features.** Classical operators (Gaussian/Laplacian filters, Sobel/Prewitt/Canny,
    HSV/LAB statistics, GLCM texture, Laplacian-pyramid energies) produce a fixed, named 43-feature
    vector.
-3. **An honest classifier.** A majority baseline, logistic regression and a random forest are compared
-   on the **validation** set. The chosen model is scored **once** on the test set. Two extra checks
-   follow: a texture ablation (with vs without texture features) and a memorisation check (1-nearest
-   neighbour).
+3. **An honest classifier.** A frozen, ImageNet-pretrained MobileNetV2 turns each photo into features, and a
+   linear head chosen on the **validation** set predicts the condition. The test set is scored **once**.
+   The old hand-crafted-feature random forest is kept as the "before" baseline. In the app, an
+   out-of-distribution gate and a confidence gate say "not recognised" or "not sure" instead of guessing.
 4. **Measurements with validity gates.** Hair counts are named precisely ("reference-line crossings",
    not "hairs"). Shaft width is given in pixels; micrometres are reported only with a documented scale.
    Every algorithm is verified against synthetic images with known truth.
@@ -80,6 +80,7 @@ pipeline from raw images to an explained result:
 | Accuracy claims | Headline number | Majority baseline, a locked test set, and a memorisation check that flags residual leakage |
 | Measurements | Reports µm / hairs per cm² from plain photos | Pixel units with a validity status; physical units only with a documented scale |
 | 3-D | Implied from single photos | A real-data gate; stereo is shown on a calibrated synthetic scene with ground truth |
+| Honest evaluation | Reports leaked accuracy | Measured that 45% of test images had a training near-copy, then built a strict split. Accuracy went from an inflated 0.95 to an honest 0.55 |
 | Reproducibility | Ad-hoc notebook cells | Tested package (150+ tests), one YAML config, fixed seeds, saved model bundles, notebooks re-executable in one command |
 
 ## 4. Results on the real dataset
@@ -98,23 +99,61 @@ publisher's listing.
 | Same photo under two different labels | 285 pairs → **151 images excluded** |
 | Final split (grouped, about 70/15/15) | 11,849 usable images: train 8,240 · validation 1,811 · test 1,798 |
 
-### 4.2 Classification (notebook 05)
+### 4.2 Classification: model v2 (`scripts/train_deep.py`)
 
-| Model (selected on validation) | Validation macro-F1 | Test accuracy | Test macro-F1 | Balanced accuracy |
+**What was wrong with the first model.** The first random forest scored 0.951 test accuracy on the
+audit's split, but that number was inflated by leakage. Measured with MobileNetV2 embeddings, **45% of
+those test images had a near-identical copy in training** (rotated, recoloured or cropped
+augmentations that the first audit did not catch). A 1-nearest-neighbour lookup scored even higher
+(0.973), which shows the model was largely recognising copies.
+
+**What v2 does differently.**
+
+1. **Stricter leakage control.** Embedding-similar pairs (cosine ≥ 0.85) are verified as the same photo
+   with ORB geometry, which handles rotation, zoom, flips and colour changes. That confirmed 104,679 more
+   copy pairs. The 12,000 images reduce to only **920 independent photo groups**, so the dataset is far
+   smaller than it looks.
+2. **A new grouped split ("v2", about 70/15/15).** Only 0.3% of test images now have a training
+   near-copy (it was 45%).
+3. **A new model.** An ImageNet-pretrained **MobileNetV2** is kept frozen, with a logistic-regression
+   head chosen on validation. Freezing the network avoids memorising the ~920 originals.
+4. **Calibrated safety gates.** A confidence threshold and an out-of-distribution threshold are both
+   calibrated on validation only.
+
+**Before vs after, on the same strict v2 split** (test set used once, never for selection):
+
+| Model | Test accuracy | Macro-F1 | Balanced accuracy |
+|---|---|---|---|
+| Majority-class baseline | ≈0.10 | — | 0.10 |
+| Before: random forest on 43 hand-crafted features | 0.469 | 0.441 | 0.469 |
+| **After: frozen MobileNetV2 + linear head** | **0.554** | **0.544** | **0.573** |
+| After, only predictions the app shows as confident (76% of test images) | **0.637** | — | — |
+
+Per-class test results (after):
+
+| Condition | Precision | Recall | F1 | Test images |
 |---|---|---|---|---|
-| Majority-class baseline | 0.018 | 0.099 | 0.018 | 0.100 |
-| Logistic regression (best C) | 0.665 | not scored (not selected) | — | — |
-| **Random forest (selected)** | **0.978** | **0.951** | **0.951** | **0.954** |
+| Alopecia Areata | 0.72 | 0.47 | 0.57 | 179 |
+| Contact Dermatitis | 0.93 | 0.30 | 0.46 | 331 |
+| Folliculitis | 0.94 | 0.49 | 0.64 | 174 |
+| Head Lice | 0.75 | 0.60 | 0.67 | 319 |
+| Lichen Planus | 0.41 | 0.45 | 0.43 | 189 |
+| Male Pattern Baldness | 0.71 | 0.93 | 0.81 | 187 |
+| Psoriasis | 0.40 | 0.63 | 0.49 | 162 |
+| Seborrheic Dermatitis | 0.43 | 0.72 | 0.54 | 191 |
+| Telogen Effluvium | 0.34 | 0.21 | 0.26 | 197 |
+| Tinea Capitis | 0.42 | 0.92 | 0.58 | 182 |
 
-Per-class test F1 ranges from 0.87 (alopecia areata) to 0.997 (lichen planus, male-pattern baldness).
-The texture ablation changes test macro-F1 by less than 0.001 (0.951 with texture vs 0.952 without).
+**Is the model learning the condition, or the background?** On test images with only the central 60%
+visible, accuracy is 0.48; with only the border visible, it is 0.37 (chance is 0.10). The centre carries
+more signal, but the model still draws a fair amount from context: framing, lighting and dataset style.
 
-**How to read the 0.95.** A 1-nearest-neighbour lookup on the same features reaches **0.973** test
-accuracy, higher than the forest. Simple matching of 43 global statistics should not separate ten
-visually similar conditions this well. The likely explanation is that the dataset was built from fewer
-original photos with heavy augmentation, and copies made by arbitrary rotation, colour jitter or
-cropping are not caught by the duplicate detector. **Treat 0.95 as an upper bound for this dataset, not
-as evidence that the model generalises to new patients.**
+**Out-of-distribution handling.** 11 of 11 clearly non-scalp images (scikit-image samples such as a cat,
+coffee, an astronaut, plus random noise) were flagged as "not recognised". Only 1.0% of genuine test
+photos were wrongly flagged.
+
+Figures: `outputs/figures/model_v2/` (before/after confusion matrices, correct and incorrect test
+examples). Full metrics: `outputs/results/model_v2/metrics.json`.
 
 ### 4.3 Verified algorithms (synthetic ground truth)
 
@@ -178,15 +217,47 @@ inputs, and ends with limitations and a conclusion.
 | 07 | `07_face_roi` | 9 | Loads the Haar frontal-face cascade, searches the real dataset for faces, proposes an upper-head region (always needs confirmation), and supports a manual ROI. Faces are blurred in saved figures | face-search summary, ROI overlays |
 | 08 | `08_integrated_demo` | 10 | The examiner-facing application: loads the saved model, analyses a test image end to end, and shows the result panel with capability badges, a technique gallery, a robustness table and a separate synthetic stereo panel | `outputs/demo/real/*.json, *.csv, *.png` |
 
+## Run the web app (Windows)
+
+ScalpTrack includes a Streamlit web app (`app/`). You upload a scalp photo, or pick a sample from the
+held-out test set, and the app runs the saved model and the full pipeline. It shows:
+
+* the closest condition pattern and its score, or "no confident match";
+* a plain-language explanation and the score for every condition;
+* the hair measurements (in pixels) with an overlay image;
+* a general care plan (daily and weekly routine, nutrition), what to expect, and when to see a dermatologist.
+
+The confidence level is calibrated on the validation split. The model has no "healthy" class, so the
+app never claims a scalp is healthy.
+
+The app needs a trained model. Run the dataset setup, then `python scripts/audit_dataset.py` and
+`python scripts/train_classifier.py` (see [HOW_TO_RUN.md](HOW_TO_RUN.md)). Then, from the project root:
+
+```bash
+.venv\Scripts\activate
+```
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+```bash
+python -m streamlit run app/streamlit_app.py
+```
+
+The app opens at <http://localhost:8501>. Stop it with `Ctrl+C` in the terminal.
+
 ## 7. Technologies
 
 | Area | Tools |
 |---|---|
 | Language | Python 3.11–3.13 |
 | Computer vision | OpenCV 4.x (filters, edges, thresholds, pyramids, ORB, StereoSGBM, Haar cascades), scikit-image (skeletons, GLCM check), SciPy, Pillow |
-| Machine learning | scikit-learn (Pipeline, StandardScaler, LogisticRegression, RandomForest, metrics, StratifiedGroupKFold) |
+| Deep learning | PyTorch 2.15 + torchvision (CPU): frozen ImageNet-pretrained MobileNetV2 feature extractor |
+| Machine learning | scikit-learn (Pipeline, StandardScaler, LogisticRegression, RandomForest, kNN, metrics) |
 | Data and plots | NumPy, pandas, Matplotlib |
 | Notebooks | Jupyter, nbformat/nbclient (headless execution), ipywidgets (optional controls) |
+| Web app | Streamlit with a custom HTML/CSS design system (`app/`) |
 | Quality | pytest (150+ tests), ruff (lint and format), YAML configuration, joblib model bundles |
 | Optional | TensorFlow / MobileNetV2 (`requirements-training.txt`, not used for the reported results) |
 
@@ -203,6 +274,7 @@ ScalpTrack/
 │   ├── measurements · stereo · face_roi                               hair, Lab 8, Lab 9
 │   ├── pipeline · exports · viz · schema                              Lab 10 analyzer and outputs
 │   └── synthetic · demo_data · config                                 fixtures and helpers
+├── app/                          Streamlit web app (streamlit_app.py, engine.py, condition_info.py, assets/)
 ├── notebooks/00…08_*.ipynb       executed notebooks (sources in scripts/nbbuild/)
 ├── scripts/                      download · audit · train · run_pipeline · run/check/build notebooks · report
 ├── tests/                        unit and integration tests (no download needed)
@@ -219,15 +291,24 @@ then `pipeline.analyze_image`, which is written as eight numbered steps.
 
 ## 9. Limitations
 
-* **Residual augmentation leakage.** Copies made by arbitrary rotation, colour jitter or cropping are not
-  detected, so the test score is an upper bound (see §4.2). There are no patient identities, so
-  different photos of the same person can still fall into different splits.
-* **Labels are the publisher's folders**, without clinical adjudication. Some classes overlap visually.
-* **Hair counts and widths on real photos are exploratory.** There are no count labels and no physical
-  scale, so µm widths, follicle counts and density are reported as unavailable.
-* **Real scalp 3-D is unavailable.** The data has no stereo pairs; Lab 8 is shown on a synthetic scene.
-* **Haar detects frontal faces only.** Most images are scalp close-ups, where finding no face is the
-  correct result.
+* **The dataset is the bottleneck.** 12,000 images come from only about 920 independent photos (about 92
+  per condition). That is too few for reliable 10-class diagnosis. The honest accuracy is about 55%
+  overall, and 64% when the model is confident.
+* **No real-world validation.** There is no labelled set of outside photos (other cameras, skin tones,
+  clinics), so performance on Google or phone photos is unmeasured and is probably lower than the test
+  numbers.
+* **Some classes are weak.** Telogen effluvium (F1 0.26), lichen planus and psoriasis are often confused
+  with each other.
+* **Partly context-driven.** The border-only probe still scores 0.37, so lighting and framing influence
+  predictions.
+* **Labels are the publisher's folders**, without clinical adjudication. There is no "healthy" class, so
+  the app cannot confirm that a scalp is healthy.
+* **What would actually fix this:** several thousand *independent* scalp photos per condition (not
+  augmentations), with dermatologist-confirmed labels, patient IDs for grouping, a healthy-scalp class, and
+  an external test set from a different source. Public candidates must still be checked for these
+  properties (for example the Roboflow scalp datasets linked in the spec, or DermNet-style clinical
+  collections with their licences checked).
+* Hair counts and widths are exploratory and in pixels; real scalp 3-D is unavailable (no stereo pairs).
 
 The full list is in [docs/limitations.md](docs/limitations.md).
 
