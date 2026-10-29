@@ -18,8 +18,10 @@ import json
 import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pandas as pd
 import yaml
@@ -344,53 +346,142 @@ def near_duplicate_pairs(variant_hashes: np.ndarray, threshold: int, chunk: int 
     return np.concatenate(pairs) if pairs else np.zeros((0, 2), dtype=int)
 
 
+class OrbVerifier:
+    """Decide whether two image files show the *same photograph* up to shift, zoom, rotation or flip.
+
+    Augmented copies are related by a similarity transform, so ORB keypoints of one map onto
+    the other consistently; two different photos of similar-looking hair do not. The test
+    counts RANSAC inliers of ``cv2.estimateAffinePartial2D`` (also against the mirrored image).
+
+    Calibrated on the Kaggle export (notebook 00): known copies have a median of ~190
+    inliers (1st percentile ~20), random different photos never exceeded 12.
+    """
+
+    def __init__(self, paths: list[Path], min_inliers: int = 25, width: int = 320, n_features: int = 600):
+        self.paths = paths
+        self.min_inliers = min_inliers
+        self.width = width
+        self._orb = cv2.ORB_create(nfeatures=n_features)
+        self._features = lru_cache(maxsize=4000)(self._compute_features)
+
+    def _compute_features(self, index: int, mirrored: bool):
+        gray = cv2.imread(str(self.paths[index]), cv2.IMREAD_GRAYSCALE)
+        if gray is None:
+            return None, None
+        height = max(1, round(self.width * gray.shape[0] / gray.shape[1]))
+        gray = cv2.resize(gray, (self.width, height), interpolation=cv2.INTER_AREA)
+        if mirrored:
+            gray = np.ascontiguousarray(gray[:, ::-1])
+        return self._orb.detectAndCompute(gray, None)
+
+    def inliers(self, i: int, j: int) -> int:
+        """Largest number of transform-consistent keypoint matches between ``i`` and ``j`` (or mirrored ``j``)."""
+        matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        kp_a, desc_a = self._features(i, False)
+        best = 0
+        for mirrored in (False, True):
+            kp_b, desc_b = self._features(j, mirrored)
+            if desc_a is None or desc_b is None or len(kp_a) < 8 or len(kp_b) < 8:
+                continue
+            matches = matcher.match(desc_a, desc_b)
+            if len(matches) < 8:
+                continue
+            pts_a = np.float32([kp_a[m.queryIdx].pt for m in matches])
+            pts_b = np.float32([kp_b[m.trainIdx].pt for m in matches])
+            _, inlier_mask = cv2.estimateAffinePartial2D(
+                pts_a, pts_b, method=cv2.RANSAC, ransacReprojThreshold=4.0
+            )
+            if inlier_mask is not None:
+                best = max(best, int(inlier_mask.sum()))
+        return best
+
+    def __call__(self, i: int, j: int) -> bool:
+        return self.inliers(i, j) >= self.min_inliers
+
+
+@dataclass
+class DuplicateResult:
+    """Output of ``duplicate_groups``: a group index per row, the confirmed pairs, and statistics."""
+
+    group_idx: np.ndarray
+    pairs: np.ndarray  # (k, 2) row indices of directly confirmed near-duplicate pairs
+    stats: dict
+
+
 def duplicate_groups(
     file_hashes: list[str | None],
     variant_hashes: np.ndarray | None,
     threshold: int,
     thumbs: list[np.ndarray] | None = None,
     min_corr: float = 0.9,
-) -> tuple[np.ndarray, dict]:
-    """Union exact (SHA-256) and near duplicates. Returns group index per row and stats.
+    verify_pair=None,
+    accept_corr: float = 0.98,
+    workers: int = 8,
+) -> DuplicateResult:
+    """Group exact (SHA-256) and near-duplicate images with union-find.
 
-    A near-duplicate needs a dHash match (<= ``threshold`` bits under some flip/rotation) AND,
-    when thumbnails are given, a 32x32 thumbnail correlation >= ``min_corr`` under some
-    flip/rotation. The second check rejects distinct images whose coarse gradient pattern
-    happens to agree (common for repetitive hair textures).
+    A near-duplicate pair must pass up to three stages:
+
+    1. **Candidate**: dHash within ``threshold`` bits under some flip/90-degree rotation.
+    2. **Thumbnail**: 32x32 thumbnail correlation >= ``min_corr`` (when thumbnails are given).
+    3. **Geometry** (when ``verify_pair`` is given): pairs below ``accept_corr`` must also pass
+       ``verify_pair(i, j)``, e.g. ``OrbVerifier``. This removes look-alike *different* photos.
+
+    Grouping is transitive (A~B and B~C puts A, B, C together). That can only make groups
+    larger, which is the safe direction for leakage-free splits.
     """
     n = len(file_hashes)
     uf = _UnionFind(n)
     first: dict[str, int] = {}
-    n_exact = 0
+    exact_pairs = []
     for i, h in enumerate(file_hashes):
         if h is None:
             continue
         if h in first:
-            uf.union(first[h], i)
-            n_exact += 1
+            exact_pairs.append((first[h], i))
         else:
             first[h] = i
-    n_candidates, n_near = 0, 0
+
+    candidates = np.zeros((0, 2), dtype=int)
     if variant_hashes is not None and len(variant_hashes):
-        pairs = near_duplicate_pairs(variant_hashes, threshold)
-        n_candidates = len(pairs)
-        for i, j in pairs:
-            if thumbs is not None and thumbnail_correlation(thumbs[i], thumbs[j]) < min_corr:
-                continue
-            n_near += 1
-            uf.union(int(i), int(j))
+        candidates = near_duplicate_pairs(variant_hashes, threshold)
+
+    # Stage 2: thumbnail correlation.
+    if thumbs is not None and len(candidates):
+        corr = np.array([thumbnail_correlation(thumbs[i], thumbs[j]) for i, j in candidates])
+    else:
+        corr = np.ones(len(candidates))
+    passed_thumb = corr >= min_corr
+
+    # Stage 3: geometric verification for everything that is not near-identical.
+    accepted = passed_thumb.copy()
+    needs_geometry = passed_thumb & (corr < accept_corr)
+    if verify_pair is not None and needs_geometry.any():
+        todo = candidates[needs_geometry]
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            verdicts = list(ex.map(lambda p: verify_pair(int(p[0]), int(p[1])), todo))
+        accepted[np.nonzero(needs_geometry)[0]] = verdicts
+
+    confirmed = np.concatenate([np.array(exact_pairs, dtype=int).reshape(-1, 2), candidates[accepted]])
+    confirmed = np.unique(np.sort(confirmed, axis=1), axis=0)  # an exact copy is also a dHash candidate
+    for i, j in confirmed:
+        uf.union(int(i), int(j))
     roots = np.array([uf.find(i) for i in range(n)])
     _, group_idx = np.unique(roots, return_inverse=True)
     sizes = np.bincount(group_idx)
-    return group_idx, {
-        "exact_duplicate_files": n_exact,
-        "dhash_candidate_pairs": n_candidates,
-        "near_duplicate_pairs": n_near,
-        "verification_min_corr": min_corr if thumbs is not None else None,
+    stats = {
+        "exact_duplicate_files": len(exact_pairs),
+        "dhash_candidate_pairs": int(len(candidates)),
+        "passed_thumbnail_check": int(passed_thumb.sum()),
+        "geometry_checked": int(needs_geometry.sum()) if verify_pair is not None else 0,
+        "near_duplicate_pairs": int(len(confirmed)),
+        "thumbnail_min_corr": min_corr if thumbs is not None else None,
+        "geometric_verification": verify_pair is not None,
         "n_groups": int(len(sizes)),
         "n_groups_size_gt1": int((sizes > 1).sum()),
         "largest_group": int(sizes.max()) if len(sizes) else 0,
     }
+    return DuplicateResult(group_idx=group_idx, pairs=confirmed, stats=stats)
 
 
 # --------------------------------------------------------------------------- splits
@@ -505,15 +596,28 @@ def build_manifest(
         if isinstance(v, list):
             variants[i] = np.array(v, dtype=np.uint64)
     idx = np.nonzero(readable)[0]
-    gidx, dup_stats = duplicate_groups(
+    c = cfg["classification"]
+    verifier = None
+    if c.get("near_duplicate_orb_inliers"):
+        verifier = OrbVerifier(
+            [base / df["relative_path"].iloc[i] for i in idx],
+            min_inliers=int(c["near_duplicate_orb_inliers"]),
+        )
+    if progress:
+        print("[audit] finding near-duplicates (dHash -> thumbnail -> ORB geometry) ...")
+    dups = duplicate_groups(
         [df["file_hash"].iloc[i] for i in idx],
         variants[idx],
-        int(cfg["classification"]["near_duplicate_hamming"]),
+        int(c["near_duplicate_hamming"]),
         thumbs=[df["thumb"].iloc[i] for i in idx],
-        min_corr=float(cfg["classification"].get("near_duplicate_min_corr", 0.9)),
+        min_corr=float(c.get("near_duplicate_min_corr", 0.9)),
+        verify_pair=verifier,
+        accept_corr=float(c.get("near_duplicate_accept_corr", 0.98)),
+        workers=workers,
     )
+    dup_stats = dups.stats
     df["duplicate_group_id"] = None
-    df.loc[df.index[idx], "duplicate_group_id"] = [f"{source_name}_g{g:05d}" for g in gidx]
+    df.loc[df.index[idx], "duplicate_group_id"] = [f"{source_name}_g{g:05d}" for g in dups.group_idx]
     df.loc[df["duplicate_group_id"].isna(), "duplicate_group_id"] = [
         f"{source_name}_unreadable_{i}" for i in range(int(df["duplicate_group_id"].isna().sum()))
     ]
@@ -539,14 +643,17 @@ def build_manifest(
     df["calibration_id"] = None
     df["notes"] = None
 
-    # Label conflicts inside one duplicate group mean the same picture carries two labels.
+    # A label conflict is a *directly confirmed* copy pair whose two images carry different labels:
+    # the same photograph filed under two conditions. Both images are excluded, because there is
+    # no way to tell which label is right. Chained group membership alone is not a conflict.
     if scan.layout != "yolo":
-        conflict = (
-            df[df["exclusion_reason"].isna()].groupby("duplicate_group_id")["canonical_label"].nunique()
-        )
-        bad = conflict.index[conflict > 1]
-        df.loc[df["duplicate_group_id"].isin(bad) & df["exclusion_reason"].isna(), "exclusion_reason"] = (
-            "duplicate_group_label_conflict"
+        labels = df["canonical_label"].to_numpy()
+        rows = df.index[idx]
+        conflicting = {rows[k] for a, b in dups.pairs if labels[rows[a]] != labels[rows[b]] for k in (a, b)}
+        is_conflict = df.index.isin(list(conflicting)) & df["exclusion_reason"].isna()
+        df.loc[is_conflict, "exclusion_reason"] = "near_duplicate_label_conflict"
+        dup_stats["label_conflict_pairs"] = int(
+            sum(labels[rows[a]] != labels[rows[b]] for a, b in dups.pairs)
         )
         split, split_report = assign_splits(
             df, cfg["classification"]["split_policy"], cfg["classification"]["split_fractions"], cfg["seed"]
@@ -588,7 +695,7 @@ def build_manifest(
         .head(10)
         .to_dict("records"),
         "n_missing_label": int((df["exclusion_reason"] == "missing_label").sum()),
-        "n_label_conflict": int((df["exclusion_reason"] == "duplicate_group_label_conflict").sum()),
+        "n_label_conflict": int((df["exclusion_reason"] == "near_duplicate_label_conflict").sum()),
         "duplicates": dup_stats,
         "split": split_report,
         "source_info": info,

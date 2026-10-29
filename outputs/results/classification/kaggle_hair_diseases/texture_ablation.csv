@@ -1,0 +1,3 @@
+variant,n_features,selected_model,val_macro_f1,test_macro_f1,test_accuracy,test_balanced_accuracy
+with_texture,43,random_forest,0.9779535704118596,0.9509454329222076,0.9510567296996663,0.953903743315508
+without_texture,26,random_forest,0.974004463425184,0.9518064296122238,0.9516129032258065,0.9544233478205719

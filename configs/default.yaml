@@ -139,8 +139,10 @@ classification:
   task_mode: auto                    # image_classification | region_classification (from audit)
   split_policy: publisher_if_clean   # publisher_if_clean | regroup
   split_fractions: [0.70, 0.15, 0.15]
-  near_duplicate_hamming: 6          # dHash bits (64) incl. 8 flips/rotations (candidate stage)
-  near_duplicate_min_corr: 0.9       # 32x32 thumbnail correlation needed to confirm a candidate
+  near_duplicate_hamming: 6          # stage 1: dHash bits (of 64) under 8 flips/rotations
+  near_duplicate_min_corr: 0.7       # stage 2: 32x32 thumbnail correlation to keep a candidate
+  near_duplicate_accept_corr: 0.98   # near-identical thumbnails are accepted without stage 3
+  near_duplicate_orb_inliers: 25     # stage 3: ORB similarity-transform inliers that confirm a copy (0 = off)
   logreg_C_grid: [0.01, 0.1, 1.0, 10.0]
   rf_n_estimators: 300
   rf_n_jobs: 1                       # single worker = reproducible, works in restricted environments; raise for speed

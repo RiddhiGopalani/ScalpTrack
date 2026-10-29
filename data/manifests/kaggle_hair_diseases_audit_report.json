@@ -1,0 +1,52 @@
+{
+  "source": "kaggle_hair_diseases",
+  "source_dir": "data/raw/kaggle_hair_diseases",
+  "layout": "split_class_folders",
+  "n_image_files": 12000,
+  "n_other_files": 1,
+  "other_files_examples": [
+    "SOURCE_INFO.json"
+  ],
+  "class_names_raw": [
+    "Alopecia Areata",
+    "Contact Dermatitis",
+    "Folliculitis",
+    "Head Lice",
+    "Lichen Planus",
+    "Male Pattern Baldness",
+    "Psoriasis",
+    "Seborrheic Dermatitis",
+    "Telogen Effluvium",
+    "Tinea Capitis"
+  ],
+  "n_unreadable": 0,
+  "unreadable_examples": [],
+  "n_missing_label": 0,
+  "n_label_conflict": 151,
+  "duplicates": {
+    "exact_duplicate_files": 0,
+    "dhash_candidate_pairs": 24108,
+    "passed_thumbnail_check": 19311,
+    "geometry_checked": 18974,
+    "near_duplicate_pairs": 9451,
+    "thumbnail_min_corr": 0.7,
+    "geometric_verification": true,
+    "n_groups": 7343,
+    "n_groups_size_gt1": 1218,
+    "largest_group": 116,
+    "label_conflict_pairs": 285
+  },
+  "split": {
+    "policy": "publisher_if_clean",
+    "groups_crossing_publisher_split": 562,
+    "images_in_crossing_groups": 4032,
+    "decision": "re-split by independent duplicate group: 562 duplicate groups cross the publisher split"
+  },
+  "source_info": {
+    "url": "https://www.kaggle.com/datasets/sundarannamalai/hair-diseases",
+    "license": "CC BY-NC-SA 4.0",
+    "version": "1",
+    "download_date": "2026-10-27",
+    "method": "manual download"
+  }
+}

@@ -79,12 +79,46 @@ def test_dhash_lookalike_rejected_by_thumbnail_check():
     flipped = np.ascontiguousarray(a[:, ::-1])
     hashes = np.array([audit.dihedral_dhashes(x) for x in (a, b, flipped)], dtype=np.uint64)
     thumbs = [audit.thumbnail(x) for x in (a, b, flipped)]
-    g_hash_only, st0 = audit.duplicate_groups(["h1", "h2", "h3"], hashes, 6)
-    g_verified, st1 = audit.duplicate_groups(["h1", "h2", "h3"], hashes, 6, thumbs, 0.9)
-    assert g_hash_only[0] == g_hash_only[1]  # false merge without verification
-    assert g_verified[0] != g_verified[1]  # rejected by thumbnail correlation
-    assert g_verified[0] == g_verified[2]  # true flipped copy still merged
-    assert st1["dhash_candidate_pairs"] > st1["near_duplicate_pairs"]
+    hash_only = audit.duplicate_groups(["h1", "h2", "h3"], hashes, 6)
+    verified = audit.duplicate_groups(["h1", "h2", "h3"], hashes, 6, thumbs, 0.9)
+    assert hash_only.group_idx[0] == hash_only.group_idx[1]  # false merge without verification
+    assert verified.group_idx[0] != verified.group_idx[1]  # rejected by thumbnail correlation
+    assert verified.group_idx[0] == verified.group_idx[2]  # true flipped copy still merged
+    assert verified.stats["dhash_candidate_pairs"] > verified.stats["near_duplicate_pairs"]
+    assert [0, 2] in verified.pairs.tolist()
+
+
+def _photo(seed: int, size=(240, 320)) -> np.ndarray:
+    """A textured grayscale 'photo' with enough corners for ORB."""
+    rng = np.random.default_rng(seed)
+    small = (rng.random((size[0] // 8, size[1] // 8)) * 255).astype(np.uint8)
+    return np.asarray(Image.fromarray(small).resize(size[::-1], Image.Resampling.BICUBIC))
+
+
+def test_orb_verifier_accepts_augmented_copy_and_rejects_other_photo(tmp_path):
+    photo = _photo(0)
+    shifted = np.roll(photo, (12, -9), axis=(0, 1))  # augmentation-like shift
+    mirrored = np.ascontiguousarray(photo[:, ::-1])
+    paths = []
+    for name, img in (("a", photo), ("shift", shifted), ("mirror", mirrored), ("other", _photo(1))):
+        paths.append(tmp_path / f"{name}.png")
+        Image.fromarray(img).save(paths[-1])
+    verify = audit.OrbVerifier(paths, min_inliers=25)
+    assert verify(0, 1) and verify(0, 2)  # shifted and mirrored copies of the same photo
+    assert not verify(0, 3)  # a different photo
+    assert verify.inliers(0, 3) < 25
+
+
+def test_geometry_rejects_lookalike_that_passed_thumbnail_stage():
+    # A verifier that says "different photo" vetoes a pair whose thumbnails agree (corr < accept_corr).
+    a = _photo(3)
+    b = np.clip(a.astype(int) + 6, 0, 255).astype(np.uint8)  # nearly the same thumbnail
+    hashes = np.array([audit.dihedral_dhashes(x) for x in (a, b)], dtype=np.uint64)
+    thumbs = [audit.thumbnail(x) for x in (a, b)]
+    vetoed = audit.duplicate_groups(
+        ["h1", "h2"], hashes, 6, thumbs, 0.7, verify_pair=lambda i, j: False, accept_corr=1.01
+    )
+    assert vetoed.group_idx[0] != vetoed.group_idx[1] and vetoed.stats["geometry_checked"] == 1
 
 
 def test_missing_dataset_message(tmp_path):

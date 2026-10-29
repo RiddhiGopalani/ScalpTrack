@@ -3,18 +3,20 @@
 This file states what the repository does **not** establish. It is kept in sync with the executed
 evidence in `reports/capability_status.md`.
 
-## 1. Data status (the biggest open item)
+## 1. Data status
 
-* **No real image was downloaded or analysed.** Every linked source needs the user's own Kaggle or
-  Roboflow account (see `docs/dataset_setup.md`). Only the Kaggle *file listing* was retrieved, as
-  metadata.
-* Consequently **no scalp-condition model has been trained on real data**, and no real accuracy,
-  confusion matrix or per-class metric exists yet. The model in `models/synthetic_demo/` was trained on
-  generated textures to exercise the software. Its labels are not scalp conditions.
-* All real-data code paths (audit → manifest → grouped split → features → training → bundle → demo)
-  were executed end to end on a throwaway *toy export of generated images* laid out like the Kaggle
-  dataset. That run proves the code paths work. It says nothing about scalp images, and its outputs were
-  discarded.
+* The Kaggle *Hair Diseases* export (12,000 images, verified against the publisher's listing) is
+  audited and used for training and evaluation. Images stay in the git-ignored `data/raw/`.
+* **The publisher split leaks.** 562 confirmed copy groups (4,032 images) crossed train/val/test, so
+  ScalpTrack re-splits by copy group. 151 images that are confirmed copies of an image with a
+  *different* label are excluded.
+* **Residual leakage remains.** The detector confirms flip/shift/zoom copies (dHash candidates →
+  thumbnail correlation → ORB geometric verification). It does not find copies made by arbitrary
+  rotation, colour jitter or heavy cropping. On the real split a 1-nearest-neighbour lookup scores 0.973
+  test accuracy, above the selected random forest (0.951). The test score is therefore an **upper
+  bound** for this dataset, not evidence of generalisation to new patients.
+* The synthetic model in `models/synthetic_demo/` is a software check only. Its labels are not scalp
+  conditions.
 
 ## 2. Classification
 

@@ -1,0 +1,626 @@
+{
+  "provenance": "real",
+  "trained_on": "kaggle_hair_diseases",
+  "task_mode": "image_classification",
+  "model_id": "kaggle_hair_diseases__random_forest__seed42",
+  "selected_model": "random_forest",
+  "classes": [
+    "alopecia_areata",
+    "contact_dermatitis",
+    "folliculitis",
+    "head_lice",
+    "lichen_planus",
+    "male_pattern_baldness",
+    "psoriasis",
+    "seborrheic_dermatitis",
+    "telogen_effluvium",
+    "tinea_capitis"
+  ],
+  "validation_selection": [
+    {
+      "model": "random_forest",
+      "val_macro_f1": 0.9779535704118596,
+      "val_accuracy": 0.9779127553837659,
+      "val_balanced_accuracy": 0.9780357213176047,
+      "fit_seconds": 9.803538100008154
+    },
+    {
+      "model": "logreg_C10",
+      "val_macro_f1": 0.6653834040487439,
+      "val_accuracy": 0.6703478741027057,
+      "val_balanced_accuracy": 0.6696906171803526,
+      "fit_seconds": 0.9318777000007685
+    },
+    {
+      "model": "logreg_C1",
+      "val_macro_f1": 0.6482121409064376,
+      "val_accuracy": 0.6548868028713418,
+      "val_balanced_accuracy": 0.6536305922056025,
+      "fit_seconds": 0.4047054999973625
+    },
+    {
+      "model": "logreg_C0.1",
+      "val_macro_f1": 0.6104369839454121,
+      "val_accuracy": 0.616234124792932,
+      "val_balanced_accuracy": 0.6137593711231819,
+      "fit_seconds": 0.19487750000553206
+    },
+    {
+      "model": "logreg_C0.01",
+      "val_macro_f1": 0.5601341231574519,
+      "val_accuracy": 0.560463832136941,
+      "val_balanced_accuracy": 0.5586387008251565,
+      "fit_seconds": 0.11269029999675695
+    },
+    {
+      "model": "majority_baseline",
+      "val_macro_f1": 0.01789844142785319,
+      "val_accuracy": 0.09828823854224185,
+      "val_balanced_accuracy": 0.1,
+      "fit_seconds": 0.04307960000005551
+    }
+  ],
+  "test": {
+    "status": "ok",
+    "selected": {
+      "n": 1798,
+      "accuracy": 0.9510567296996663,
+      "balanced_accuracy": 0.953903743315508,
+      "macro_f1": 0.9509454329222076,
+      "weighted_f1": 0.949841281298117,
+      "per_class": {
+        "alopecia_areata": {
+          "precision": 1.0,
+          "recall": 0.7754010695187166,
+          "f1-score": 0.8734939759036144,
+          "support": 187.0
+        },
+        "contact_dermatitis": {
+          "precision": 0.893048128342246,
+          "recall": 1.0,
+          "f1-score": 0.943502824858757,
+          "support": 167.0
+        },
+        "folliculitis": {
+          "precision": 1.0,
+          "recall": 0.9666666666666667,
+          "f1-score": 0.9830508474576272,
+          "support": 180.0
+        },
+        "head_lice": {
+          "precision": 0.898989898989899,
+          "recall": 1.0,
+          "f1-score": 0.9468085106382979,
+          "support": 178.0
+        },
+        "lichen_planus": {
+          "precision": 1.0,
+          "recall": 0.9944444444444445,
+          "f1-score": 0.9972144846796658,
+          "support": 180.0
+        },
+        "male_pattern_baldness": {
+          "precision": 0.9945054945054945,
+          "recall": 1.0,
+          "f1-score": 0.9972451790633609,
+          "support": 181.0
+        },
+        "psoriasis": {
+          "precision": 0.9823529411764705,
+          "recall": 1.0,
+          "f1-score": 0.9910979228486647,
+          "support": 167.0
+        },
+        "seborrheic_dermatitis": {
+          "precision": 0.9937888198757764,
+          "recall": 0.8080808080808081,
+          "f1-score": 0.8913649025069638,
+          "support": 198.0
+        },
+        "telogen_effluvium": {
+          "precision": 0.8530805687203792,
+          "recall": 1.0,
+          "f1-score": 0.9207161125319693,
+          "support": 180.0
+        },
+        "tinea_capitis": {
+          "precision": 0.93717277486911,
+          "recall": 0.9944444444444445,
+          "f1-score": 0.9649595687331537,
+          "support": 180.0
+        },
+        "accuracy": 0.9510567296996663,
+        "macro avg": {
+          "precision": 0.9552938626479376,
+          "recall": 0.953903743315508,
+          "f1-score": 0.9509454329222076,
+          "support": 1798.0
+        },
+        "weighted avg": {
+          "precision": 0.9561921375510756,
+          "recall": 0.9510567296996663,
+          "f1-score": 0.949841281298117,
+          "support": 1798.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          145,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          30,
+          12
+        ],
+        [
+          0,
+          167,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          174,
+          0,
+          0,
+          0,
+          3,
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          178,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          179,
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          181,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          167,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          18,
+          0,
+          20,
+          0,
+          0,
+          0,
+          160,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          180,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          179
+        ]
+      ],
+      "labels": [
+        "alopecia_areata",
+        "contact_dermatitis",
+        "folliculitis",
+        "head_lice",
+        "lichen_planus",
+        "male_pattern_baldness",
+        "psoriasis",
+        "seborrheic_dermatitis",
+        "telogen_effluvium",
+        "tinea_capitis"
+      ]
+    },
+    "majority_baseline": {
+      "n": 1798,
+      "accuracy": 0.09899888765294772,
+      "balanced_accuracy": 0.1,
+      "macro_f1": 0.018016194331983808,
+      "weighted_f1": 0.01783583198605738,
+      "per_class": {
+        "alopecia_areata": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 187.0
+        },
+        "contact_dermatitis": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 167.0
+        },
+        "folliculitis": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 180.0
+        },
+        "head_lice": {
+          "precision": 0.09899888765294772,
+          "recall": 1.0,
+          "f1-score": 0.18016194331983806,
+          "support": 178.0
+        },
+        "lichen_planus": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 180.0
+        },
+        "male_pattern_baldness": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 181.0
+        },
+        "psoriasis": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 167.0
+        },
+        "seborrheic_dermatitis": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 198.0
+        },
+        "telogen_effluvium": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 180.0
+        },
+        "tinea_capitis": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 180.0
+        },
+        "accuracy": 0.09899888765294772,
+        "macro avg": {
+          "precision": 0.009899888765294771,
+          "recall": 0.1,
+          "f1-score": 0.018016194331983808,
+          "support": 1798.0
+        },
+        "weighted avg": {
+          "precision": 0.009800779756520965,
+          "recall": 0.09899888765294772,
+          "f1-score": 0.01783583198605738,
+          "support": 1798.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0,
+          187,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          167,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          180,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          178,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          180,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          181,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          167,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          198,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          180,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          180,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "labels": [
+        "alopecia_areata",
+        "contact_dermatitis",
+        "folliculitis",
+        "head_lice",
+        "lichen_planus",
+        "male_pattern_baldness",
+        "psoriasis",
+        "seborrheic_dermatitis",
+        "telogen_effluvium",
+        "tinea_capitis"
+      ]
+    },
+    "timing": {
+      "n_samples": 1798,
+      "classifier_predict_seconds": 0.07477099999960046,
+      "note": "classifier step only (features precomputed); see per-image timing in notebook 05"
+    }
+  },
+  "ablation": [
+    {
+      "variant": "with_texture",
+      "n_features": 43,
+      "selected_model": "random_forest",
+      "val_macro_f1": 0.9779535704118596,
+      "test_macro_f1": 0.9509454329222076,
+      "test_accuracy": 0.9510567296996663,
+      "test_balanced_accuracy": 0.953903743315508
+    },
+    {
+      "variant": "without_texture",
+      "n_features": 26,
+      "selected_model": "random_forest",
+      "val_macro_f1": 0.974004463425184,
+      "test_macro_f1": 0.9518064296122238,
+      "test_accuracy": 0.9516129032258065,
+      "test_balanced_accuracy": 0.9544233478205719
+    }
+  ],
+  "split_counts": [
+    {
+      "canonical_label": "alopecia_areata",
+      "test_images": 187,
+      "train_images": 814,
+      "validation_images": 199,
+      "test_groups": 45,
+      "train_groups": 381,
+      "validation_groups": 87
+    },
+    {
+      "canonical_label": "contact_dermatitis",
+      "test_images": 167,
+      "train_images": 836,
+      "validation_images": 180,
+      "test_groups": 146,
+      "train_groups": 710,
+      "validation_groups": 170
+    },
+    {
+      "canonical_label": "folliculitis",
+      "test_images": 180,
+      "train_images": 840,
+      "validation_images": 180,
+      "test_groups": 70,
+      "train_groups": 386,
+      "validation_groups": 120
+    },
+    {
+      "canonical_label": "head_lice",
+      "test_images": 178,
+      "train_images": 844,
+      "validation_images": 178,
+      "test_groups": 118,
+      "train_groups": 628,
+      "validation_groups": 130
+    },
+    {
+      "canonical_label": "lichen_planus",
+      "test_images": 180,
+      "train_images": 840,
+      "validation_images": 180,
+      "test_groups": 136,
+      "train_groups": 493,
+      "validation_groups": 115
+    },
+    {
+      "canonical_label": "male_pattern_baldness",
+      "test_images": 181,
+      "train_images": 837,
+      "validation_images": 182,
+      "test_groups": 110,
+      "train_groups": 483,
+      "validation_groups": 101
+    },
+    {
+      "canonical_label": "psoriasis",
+      "test_images": 167,
+      "train_images": 781,
+      "validation_images": 186,
+      "test_groups": 103,
+      "train_groups": 401,
+      "validation_groups": 89
+    },
+    {
+      "canonical_label": "seborrheic_dermatitis",
+      "test_images": 198,
+      "train_images": 769,
+      "validation_images": 165,
+      "test_groups": 62,
+      "train_groups": 462,
+      "validation_groups": 70
+    },
+    {
+      "canonical_label": "telogen_effluvium",
+      "test_images": 180,
+      "train_images": 839,
+      "validation_images": 181,
+      "test_groups": 126,
+      "train_groups": 385,
+      "validation_groups": 114
+    },
+    {
+      "canonical_label": "tinea_capitis",
+      "test_images": 180,
+      "train_images": 840,
+      "validation_images": 180,
+      "test_groups": 169,
+      "train_groups": 782,
+      "validation_groups": 152
+    }
+  ],
+  "versions": {
+    "python": "3.13.7",
+    "numpy": "2.5.4",
+    "opencv": "4.14.0",
+    "scikit-learn": "1.9.1",
+    "scikit-image": "0.26.0",
+    "pandas": "3.1.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD"
+  },
+  "seed": 42
+}

@@ -210,6 +210,26 @@ def build():
         model can partly recognise *sources*. With a naive split this memorisation is rewarded on test; with the grouped
         split it is not. The gap is the leakage inflation the grouped manifest prevents.
 
+        ### 5.1 Residual-leakage check on the actual split
+        The audit removes flipped/shifted/zoomed copies, but not copies made by arbitrary rotation, colour jitter or
+        cropping. A 1-nearest-neighbour lookup is a memorisation test: if it matches or beats the trained model on
+        43 *global* statistics, test images are probably near-copies of training images, and the test score is an
+        **upper bound**, not evidence of generalisation.
+    """))
+    c.append(code("""
+        from sklearn.neighbors import KNeighborsClassifier
+        from sklearn.preprocessing import StandardScaler
+
+        names = feature_names()
+        train_part, test_part = TABLE[TABLE["split"] == "train"], TABLE[TABLE["split"] == "test"]
+        scaler = StandardScaler().fit(train_part[names].fillna(0))
+        knn = KNeighborsClassifier(n_neighbors=1).fit(scaler.transform(train_part[names].fillna(0)), train_part["canonical_label"])
+        knn_acc = float((knn.predict(scaler.transform(test_part[names].fillna(0))) == test_part["canonical_label"]).mean())
+        print(f"1-NN test accuracy: {knn_acc:.3f} | selected model test accuracy: {EV['selected']['accuracy']:.3f}")
+        if knn_acc >= EV["selected"]["accuracy"] - 0.02:
+            print("=> memorisation explains the score: treat the test accuracy as an upper bound (likely residual leakage).")
+    """))
+    c.append(md("""
         ## 6. Exploratory grouped cross-validation
         The fallback protocol when independent test support is too small; reported as exploratory.
     """))

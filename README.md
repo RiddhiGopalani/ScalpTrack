@@ -1,268 +1,247 @@
-# ScalpTrack: Explainable Scalp Condition Classification and Experimental Hair Measurement
+# ScalpTrack
 
-A reproducible, notebook-first computer-vision mini-project (FCV, Labs 1–10). It analyses public
-hair/scalp images, predicts **dataset-defined scalp-condition labels** with an explainable classical
-classifier, and investigates visible hair counting, apparent shaft width and stereo depth. Every
-measurement reports its units and validity status.
+**Explainable scalp-condition classification and experimental hair measurement with classical computer vision**
 
-> **This is not a medical tool.** Predictions are scores for publisher labels from an experimental image
-> classifier. Physical widths (µm), follicle density and real scalp 3-D are reported **only** when the
-> required scale, labels or calibration exist. In the linked public data they do not.
+ScalpTrack is a reproducible, notebook-first computer-vision project (FCV mini-project, Labs 1–10). It
+classifies scalp photographs into ten dataset-defined conditions, explains *why* with interpretable
+colour, edge and texture features, and investigates hair counting, hair-shaft width and stereo depth.
+Every number is labelled with what it means and how far it can be trusted.
 
-The authoritative specification is the course PDF `fcv_miniProj.pdf`. It is kept out of this repository;
-the section numbers quoted in the code and docs (for example "spec Section 12") refer to it.
+> **Not a medical device.** Predictions are scores for the publisher's folder labels, produced by an
+> experimental classifier. They are not diagnoses.
+
+**Quick start:** see [HOW_TO_RUN.md](HOW_TO_RUN.md).
 
 ---
 
-## Current status (from executed evidence, see `reports/capability_status.md`)
+## Contents
 
-| Item | Status |
+1. [Problem statement](#1-problem-statement)
+2. [Solution](#2-solution)
+3. [What makes it different (USP)](#3-what-makes-it-different-usp)
+4. [Results on the real dataset](#4-results-on-the-real-dataset)
+5. [Architecture](#5-architecture)
+6. [What happens in each notebook](#6-what-happens-in-each-notebook)
+7. [Technologies](#7-technologies)
+8. [Repository structure](#8-repository-structure)
+9. [Limitations](#9-limitations)
+10. [Team and references](#10-team-and-references)
+
+---
+
+## 1. Problem statement
+
+Hair and scalp conditions such as alopecia, psoriasis, folliculitis, seborrheic dermatitis and lice are
+common, and they look alike to an untrained eye. Public image datasets exist, but projects built on them
+often share three problems:
+
+* **Black-box predictions.** A deep network outputs a label, with no visible evidence for it.
+* **Inflated accuracy.** Public datasets are heavily augmented. Flipped or shifted copies of one photo
+  end up in both the training and the test set, so a model scores highly by memorising.
+* **Unsupported measurements.** Hair "density in hairs/cm²" or "thickness in µm" gets reported from
+  ordinary photos that contain no physical scale.
+
+**Goal:** develop a reproducible computer-vision system that analyses public hair/scalp images,
+predicts their dataset-defined condition labels, visualises the image-processing evidence behind each
+prediction, and reports hair and 3-D measurements only in the units the data actually supports. Along
+the way it applies the whole CV lab syllabus: filtering, colour spaces, edges, thresholding, texture,
+pyramids, stereo and Haar detection.
+
+## 2. Solution
+
+ScalpTrack is a Python package (`src/scalptrack/`) and nine Jupyter notebooks (Labs 1–10). They form a
+pipeline from raw images to an explained result:
+
+1. **Audit the data first.** Every image is decoded and checked. Augmented copies are found with a
+   three-stage detector (perceptual hash → thumbnail correlation → ORB geometric verification), copies
+   that carry conflicting labels are excluded, and the data is re-split so that **no group of copies
+   crosses train/validation/test**.
+2. **Explainable features.** Classical operators (Gaussian/Laplacian filters, Sobel/Prewitt/Canny,
+   HSV/LAB statistics, GLCM texture, Laplacian-pyramid energies) produce a fixed, named 43-feature
+   vector.
+3. **An honest classifier.** A majority baseline, logistic regression and a random forest are compared
+   on the **validation** set. The chosen model is scored **once** on the test set. Two extra checks
+   follow: a texture ablation (with vs without texture features) and a memorisation check (1-nearest
+   neighbour).
+4. **Measurements with validity gates.** Hair counts are named precisely ("reference-line crossings",
+   not "hairs"). Shaft width is given in pixels; micrometres are reported only with a documented scale.
+   Every algorithm is verified against synthetic images with known truth.
+5. **One integrated analyzer.** `analyze_image()` takes an image and an optional region and returns
+   a result panel, capability badges and JSON/CSV/PNG exports. Missing inputs give a clear status
+   instead of a crash.
+
+## 3. What makes it different (USP)
+
+| | Typical public-dataset project | ScalpTrack |
+|---|---|---|
+| Data leakage | Uses the publisher's split as-is | Detects augmented copies across 12,000 images. **34% of images** sat in copy groups that crossed the publisher's split, so the data was re-split by group |
+| Label quality | Trusts the folder labels | Finds the *same photo* filed under two diseases and excludes it (151 images) |
+| Explainability | A label from a CNN | Named features, ablation, per-class errors and a visual technique gallery |
+| Accuracy claims | Headline number | Majority baseline, a locked test set, and a memorisation check that flags residual leakage |
+| Measurements | Reports µm / hairs per cm² from plain photos | Pixel units with a validity status; physical units only with a documented scale |
+| 3-D | Implied from single photos | A real-data gate; stereo is shown on a calibrated synthetic scene with ground truth |
+| Reproducibility | Ad-hoc notebook cells | Tested package (150+ tests), one YAML config, fixed seeds, saved model bundles, notebooks re-executable in one command |
+
+## 4. Results on the real dataset
+
+Dataset: Kaggle **Hair Diseases** (`sundarannamalai/hair-diseases`, v1, CC BY-NC-SA 4.0). It has 12,000
+JPEGs, ten classes and 1,200 images per class. All files were verified byte-for-byte against the
+publisher's listing.
+
+### 4.1 Data audit (notebook 00)
+
+| Check | Result |
 |---|---|
-| Automated tests | **151 passed** (`pytest`, Windows 11, Python 3.13.7) |
-| Notebooks 00–08 | **All executed** top-to-bottom in fresh kernels, 0 errors |
-| Real dataset | **Not downloaded.** Kaggle needs your account (see [docs/dataset_setup.md](docs/dataset_setup.md)). Only the public file listing was recorded: 10 classes × 1,200 jpg |
-| Real-data code paths | Executed end to end on a throwaway toy export of generated images in the Kaggle layout. That run proves the code paths only, and its outputs were discarded |
-| Scalp-condition classifier | **Not trained on real data yet.** A *synthetic software-check* model exists in `models/synthetic_demo/`. Its labels are not scalp conditions |
-| Hair count / width (px) | Verified on synthetic fixtures. Exploratory on real images |
-| Width in µm, follicle density, real 3-D | **Unavailable.** The linked data has no scale, instance labels or stereo pairs |
-| Stereo (Lab 8) | Calibrated **synthetic** scene: disparity MAE 0.20 px at 84.6 % coverage |
-| Haar (Lab 9) | Implemented, with a no-face/manual-ROI path. Positive case **data-limited** |
-| MobileNetV2 (P1) | Not run (TensorFlow not installed). Optional profile in `requirements-training.txt` |
+| Unreadable / unlabelled files | 0 / 0 |
+| Confirmed near-duplicate pairs (flip/shift/zoom copies) | 9,451, forming 1,218 copy groups |
+| Copy groups crossing the publisher's train/val/test | **562 groups, 4,032 images** → publisher split rejected |
+| Same photo under two different labels | 285 pairs → **151 images excluded** |
+| Final split (grouped, about 70/15/15) | 11,849 usable images: train 8,240 · validation 1,811 · test 1,798 |
 
----
+### 4.2 Classification (notebook 05)
 
-## Experiments → notebooks
+| Model (selected on validation) | Validation macro-F1 | Test accuracy | Test macro-F1 | Balanced accuracy |
+|---|---|---|---|---|
+| Majority-class baseline | 0.018 | 0.099 | 0.018 | 0.100 |
+| Logistic regression (best C) | 0.665 | not scored (not selected) | — | — |
+| **Random forest (selected)** | **0.978** | **0.951** | **0.951** | **0.954** |
 
-| Notebook | Labs | Owner | What it shows |
-|---|---|---|---|
-| `00_data_audit_basics` | 1 | Member B | source registry, publisher listing, **audit → manifest → leakage-safe grouped split**, sample grids, duplicate clusters, grouped-vs-naive split demo, BGR/RGB, pixel tables, resize comparison |
-| `01_filters_color` | 2, 4 | Member A | mean/Gaussian/median/bilateral/Laplacian sharpening, MSE/PSNR vs a known clean image, alpha sweep, RGB/Gray/HSV/LAB with correct encodings, hair/scalp patch statistics |
-| `02_edges_segmentation` | 3, 5 | Member A | Sobel/Prewitt (explicit kernels)/Canny, fixed/Otsu/adaptive mean & Gaussian (15/31/51), parameter selection, cleanup, hair/scalp/flake/unknown masks, coverage, measured failure cases |
-| `03_texture_pyramids` | 6, 7 | Member A | GLCM (32 levels, d = 1/2/4, 4 angles) checked against scikit-image, histogram vs GLCM entropy, masked GLCM, feature CSV, Gaussian/Laplacian pyramids with exact reconstruction |
-| `04_hair_measurements` | – | Member C | crossing/component counts and pixel width on known fixtures, hard cases, flake-halo filter, estimator selection, robustness, µm gating, real-image status |
-| `05_classification` | 6 (ablation) | Member B | majority baseline, LogisticRegression/RandomForest selected on **validation**, one locked **test** evaluation, per-class report, confusion matrices, texture ablation, **measured leakage inflation**, grouped CV, error analysis, timing, saved bundle |
-| `06_stereo_depth` | 8 | Member C | real-data gate, synthetic calibrated scene, SGBM, LR/border validity, Q-matrix depth, SGBM vs BM, point cloud, shifted-copy counter-example |
-| `07_face_roi` | 9 | Member C | cascade verification, dataset face search, no-face + manual ROI, ROI errors, face blurring |
-| `08_integrated_demo` | 10 | Members C + B | `analyze_image`: result panel, capability badges, JSON/CSV/PNG export, technique gallery, robustness table, separate synthetic stereo panel |
+Per-class test F1 ranges from 0.87 (alopecia areata) to 0.997 (lichen planus, male-pattern baldness).
+The texture ablation changes test macro-F1 by less than 0.001 (0.951 with texture vs 0.952 without).
 
-The full requirement-by-requirement mapping is in [docs/experiment_mapping.md](docs/experiment_mapping.md).
+**How to read the 0.95.** A 1-nearest-neighbour lookup on the same features reaches **0.973** test
+accuracy, higher than the forest. Simple matching of 43 global statistics should not separate ten
+visually similar conditions this well. The likely explanation is that the dataset was built from fewer
+original photos with heavy augmentation, and copies made by arbitrary rotation, colour jitter or
+cropping are not caught by the duplicate detector. **Treat 0.95 as an upper bound for this dataset, not
+as evidence that the model generalises to new patients.**
 
----
+### 4.3 Verified algorithms (synthetic ground truth)
 
-## How to read this project
+| Module | Result |
+|---|---|
+| Hair counting (separated shafts) | Exact on 100% of 29 fixtures (components and line crossings) |
+| Apparent shaft width | Mean absolute error 0.31 px, max 1.0 px, over 56 width/orientation fixtures |
+| Stereo depth (SGBM + calibrated Q) | Disparity error 0.20 px at 84.6% coverage; depth MAE 6.1 mm |
+| GLCM texture | Matches scikit-image exactly |
+| Pyramid reconstruction | Exact (error at machine precision) |
 
-If you are new to the code, read it in this order. Each step builds on the one before.
+All current numbers, generated from files on disk, are in
+[reports/capability_status.md](reports/capability_status.md).
 
-1. **`configs/default.yaml`**: every number the project uses (thresholds, kernel sizes, seeds, paths).
-   Nothing is hard-coded elsewhere, so this file says what the experiments *do*.
-2. **`src/scalptrack/schema.py`**: the six result statuses (`ok`, `exploratory`, `synthetic_demo`,
-   `unavailable`, `failed`, `not_requested`). Every output is labelled with one of them.
-3. **The lab modules, in lab order**: `io_utils` (Lab 1) → `preprocessing` (Labs 2, 4) → `edges` (Lab 3) →
-   `segmentation` (Lab 5) → `texture` and `pyramids` (Labs 6, 7) → `stereo` (Lab 8) → `face_roi` (Lab 9).
-   Each module starts with a docstring naming its lab and spec section.
-4. **The project logic**: `features` (classifier inputs) → `measurements` (count and width) →
-   `audit` (dataset checks and splits) → `classification` and `experiments` (training and evaluation).
-5. **`pipeline.analyze_image`**: the integrated analyzer (Lab 10). It is written as eight numbered steps
-   that call the modules above.
-6. **The notebooks**: they only *present* results. All computation is in the package, so the notebooks
-   read as experiment reports. Their sources live in `scripts/nbbuild/`. Edit those files, then run
-   `python scripts/build_notebooks.py` and `python scripts/run_notebooks.py`.
+## 5. Architecture
 
-Supporting modules: `synthetic` (labelled test fixtures with known truth), `demo_data` (which images the
-notebooks show), `viz` (plots) and `exports` (JSON/CSV/PNG).
+```mermaid
+flowchart TD
+    A[Raw Kaggle images<br/>data/raw] --> B[Audit<br/>decode · dHash · thumbnail · ORB<br/>label conflicts · grouped split]
+    B --> M[(Manifest<br/>data/manifests)]
+    M --> C[Quality gate<br/>blur · exposure · ROI size]
+    C --> D[Preprocessing<br/>filters · HSV/LAB]
+    D --> E[Edges + segmentation<br/>Sobel · Prewitt · Canny<br/>Otsu · adaptive · masks]
+    D --> F[Features<br/>43 named: colour · edge<br/>GLCM · histogram · pyramid]
+    F --> G[Classifier<br/>baseline · LogReg · RF<br/>select on val · test once]
+    G --> K[(Model bundle<br/>models/)]
+    E --> H[Measurements<br/>crossings · components<br/>width in px · µm gate]
+    S[Stereo pair + calibration] --> T[Stereo<br/>gate · SGBM · LR check · Q depth]
+    I[Full image] --> J[Haar face detection<br/>manual ROI fallback]
+    K --> P[analyze_image]
+    H --> P
+    T --> P
+    J --> P
+    C --> P
+    P --> R[Result panel · badges<br/>JSON / CSV / PNG]
+```
 
----
+**Design principles**
 
-## Repository structure
+* **All computation lives in the package.** Notebooks only present results, so every algorithm is unit-tested.
+* **One configuration file.** `configs/default.yaml` holds every threshold, kernel, seed and path.
+* **Explicit statuses.** Every output is `ok`, `exploratory`, `synthetic_demo`, `unavailable`, `failed`
+  or `not_requested`. An unknown value is `null`, never `0`.
+* **Real and synthetic outputs are kept apart.** They go to separate folders, and synthetic files carry
+  a `SYNTHETIC_` prefix and caption.
+
+## 6. What happens in each notebook
+
+Run them in order. Each one starts with its objective, the labs and requirements it covers, and its
+inputs, and ends with limitations and a conclusion.
+
+| # | Notebook | Labs | What it does | Key outputs |
+|---|---|---|---|---|
+| 00 | `00_data_audit_basics` | 1 | Registers the sources and runs the full audit (corrupt files, sizes, duplicates, label conflicts, grouped split). Shows class distributions, sample grids and duplicate clusters. Demonstrates image reading/display, BGR vs RGB, pixel tables and resizing methods, and why measurement needs native resolution | manifest, split file, audit report, capability table |
+| 01 | `01_filters_color` | 2, 4 | Mean, Gaussian, median and bilateral filters and Laplacian sharpening on the same image; MSE/PSNR against a known clean image; RGB/gray/HSV/LAB channels with their correct numeric encodings; hair vs scalp colour statistics | filter contact sheets, PSNR table, patch statistics CSV |
+| 02 | `02_edges_segmentation` | 3, 5 | Sobel, Prewitt (explicit kernels) and Canny at three threshold pairs. Fixed, Otsu, adaptive-mean and adaptive-Gaussian thresholds with parameter selection; mask clean-up; hair/scalp/flake/unknown candidate masks. Measured failure cases: shadow, glare, light hair, blur | edge and threshold overlays, failure-case table |
+| 03 | `03_texture_pyramids` | 6, 7 | GLCM contrast, energy, entropy, homogeneity and correlation (checked against scikit-image); histogram vs GLCM entropy; masked GLCM; feature distributions per class; Gaussian/Laplacian pyramids with exact reconstruction | feature CSV, distribution plots, pyramid figures |
+| 04 | `04_hair_measurements` | — | Hair counting by connected components and reference-line crossings; shaft width by distance transform; verification on synthetic shafts, including hard cases (crossing, touching, broken, curly); flake-halo filter; robustness to blur and noise; µm gating; exploratory overlays on real images | verification CSVs, count and width overlays |
+| 05 | `05_classification` | 6 (ablation) | Trains on the real dataset: label checks, grouped split, majority baseline, model selection on validation, a single locked test evaluation, per-class report, confusion matrices, texture ablation, synthetic leakage experiment, **1-NN memorisation check**, grouped cross-validation, error gallery, timing, saved model | model bundle, `metrics.json`, confusion matrices |
+| 06 | `06_stereo_depth` | 8 | Real-data gate (no real stereo pairs exist). Renders a calibrated synthetic 3-D scene, then runs StereoSGBM, left-right consistency checks, Q-matrix depth and a point cloud, and evaluates against ground truth. Also shows why a shifted copy of one photo is not stereo | evaluation table, depth and point-cloud figures |
+| 07 | `07_face_roi` | 9 | Loads the Haar frontal-face cascade, searches the real dataset for faces, proposes an upper-head region (always needs confirmation), and supports a manual ROI. Faces are blurred in saved figures | face-search summary, ROI overlays |
+| 08 | `08_integrated_demo` | 10 | The examiner-facing application: loads the saved model, analyses a test image end to end, and shows the result panel with capability badges, a technique gallery, a robustness table and a separate synthetic stereo panel | `outputs/demo/real/*.json, *.csv, *.png` |
+
+## 7. Technologies
+
+| Area | Tools |
+|---|---|
+| Language | Python 3.11–3.13 |
+| Computer vision | OpenCV 4.x (filters, edges, thresholds, pyramids, ORB, StereoSGBM, Haar cascades), scikit-image (skeletons, GLCM check), SciPy, Pillow |
+| Machine learning | scikit-learn (Pipeline, StandardScaler, LogisticRegression, RandomForest, metrics, StratifiedGroupKFold) |
+| Data and plots | NumPy, pandas, Matplotlib |
+| Notebooks | Jupyter, nbformat/nbclient (headless execution), ipywidgets (optional controls) |
+| Quality | pytest (150+ tests), ruff (lint and format), YAML configuration, joblib model bundles |
+| Optional | TensorFlow / MobileNetV2 (`requirements-training.txt`, not used for the reported results) |
+
+## 8. Repository structure
 
 ```
 ScalpTrack/
-├── README.md  requirements.txt  requirements-training.txt  pyproject.toml  .gitignore
-├── configs/default.yaml           every parameter, seed, path and source (no absolute paths)
-├── src/scalptrack/                reusable package (all computation lives here)
-│   ├── io_utils.py     load/validate images, ROI rules, resize records
-│   ├── quality.py      blur / exposure / resolution flags
-│   ├── preprocessing.py colour spaces, filters, MSE/PSNR
-│   ├── edges.py        Sobel, Prewitt, Canny, edge summaries
-│   ├── segmentation.py thresholds, cleanup, candidate masks, coverage
-│   ├── texture.py      masked GLCM, histogram entropy
-│   ├── pyramids.py     Gaussian/Laplacian pyramids, reconstruction
-│   ├── features.py     fixed 43-feature schema (grouped for the ablation)
-│   ├── measurements.py crossings, components, shaft width, µm gating
-│   ├── audit.py        scanning, decoding checks, duplicates, manifests, grouped splits
-│   ├── classification.py  models, selection, evaluation, bundles, predict_condition
-│   ├── experiments.py  end-to-end classification run (notebook 05 + script)
-│   ├── transfer.py     optional MobileNetV2 (guarded)
-│   ├── stereo.py       gate, SGBM, validity, Q depth, evaluation
-│   ├── face_roi.py     Haar detection, ROI proposal, face blurring
-│   ├── synthetic.py    labelled verification fixtures (hairs, textures, stereo scene)
-│   ├── demo_data.py    consistent notebook inputs (train/validation only)
-│   ├── pipeline.py     analyze_image + capability badges
-│   ├── exports.py      JSON / flattened CSV / PNG
-│   ├── schema.py       statuses and result schema
-│   └── viz.py          Matplotlib helpers, result panel
-├── notebooks/00_…08_*.ipynb        executed notebooks (generated from scripts/nbbuild/)
-├── scripts/
-│   ├── download_dataset.py  audit_dataset.py  train_classifier.py  run_pipeline.py
-│   ├── build_notebooks.py  run_notebooks.py  check_notebooks.py  generate_report.py
-│   └── nbbuild/             notebook source definitions
-├── tests/                  151 pytest tests on tiny synthetic fixtures (no download needed)
-├── data/{raw,manifests,derived,synthetic}/   see data/README.md (raw data is git-ignored)
-├── models/                 saved bundles (models/synthetic_demo/ = software check only)
-├── outputs/{figures,results,demo}/            real/ and synthetic/ kept apart, SYNTHETIC_ prefixes
-├── reports/capability_status.md               generated from evidence on disk
-└── docs/  experiment_mapping.md  dataset_setup.md  limitations.md  member_c_migration.md
+├── README.md · HOW_TO_RUN.md · requirements.txt · pyproject.toml
+├── configs/default.yaml          every parameter, seed and path
+├── src/scalptrack/               the package (all computation)
+│   ├── io_utils · quality · preprocessing · edges · segmentation      Labs 1–5
+│   ├── texture · pyramids · features                                  Labs 6–7, classifier inputs
+│   ├── audit · classification · experiments · transfer                data and models
+│   ├── measurements · stereo · face_roi                               hair, Lab 8, Lab 9
+│   ├── pipeline · exports · viz · schema                              Lab 10 analyzer and outputs
+│   └── synthetic · demo_data · config                                 fixtures and helpers
+├── notebooks/00…08_*.ipynb       executed notebooks (sources in scripts/nbbuild/)
+├── scripts/                      download · audit · train · run_pipeline · run/check/build notebooks · report
+├── tests/                        unit and integration tests (no download needed)
+├── data/  raw/ (git-ignored) · manifests/ · derived/ · synthetic/
+├── models/                       saved model bundles
+├── outputs/  figures/ · results/ · demo/
+├── reports/capability_status.md  generated evidence summary
+└── docs/                         experiment mapping · dataset setup · limitations · Member C migration
 ```
 
----
+To read the code, start with `configs/default.yaml` and `schema.py`, then the lab modules in lab order,
+then `pipeline.analyze_image`, which is written as eight numbered steps.
+[docs/experiment_mapping.md](docs/experiment_mapping.md) maps every lab and requirement to code.
 
-## Setup on Windows
+## 9. Limitations
 
-Prerequisites: Python 3.11–3.13 (tested with 3.13.7), Git, and about 1 GB of free disk space for the dataset.
+* **Residual augmentation leakage.** Copies made by arbitrary rotation, colour jitter or cropping are not
+  detected, so the test score is an upper bound (see §4.2). There are no patient identities, so
+  different photos of the same person can still fall into different splits.
+* **Labels are the publisher's folders**, without clinical adjudication. Some classes overlap visually.
+* **Hair counts and widths on real photos are exploratory.** There are no count labels and no physical
+  scale, so µm widths, follicle counts and density are reported as unavailable.
+* **Real scalp 3-D is unavailable.** The data has no stereo pairs; Lab 8 is shown on a synthetic scene.
+* **Haar detects frontal faces only.** Most images are scalp close-ups, where finding no face is the
+  correct result.
 
-```bash
-cd C:\Riddhi_Projects\ScalpTrack
-```
+The full list is in [docs/limitations.md](docs/limitations.md).
 
-```bash
-python -m venv .venv
-```
+## 10. Team and references
 
-```bash
-.venv\Scripts\activate
-```
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-```bash
-python -m pip install -e .
-```
-
-Optionally register the environment as a Jupyter kernel:
-
-```bash
-python -m ipykernel install --user --name scalptrack --display-name "Python (ScalpTrack)"
-```
-
-`opencv-python-headless` must stay below 5, because OpenCV 5 removed `CascadeClassifier` (Haar) from
-the main wheel.
-
----
-
-## Get the data (manual, your account)
-
-Follow [docs/dataset_setup.md](docs/dataset_setup.md). In short: download Kaggle
-`sundarannamalai/hair-diseases` (CC BY-NC-SA 4.0), extract it to `data\raw\kaggle_hair_diseases\`, then run:
-
-```bash
-python scripts/download_dataset.py --source kaggle_hair_diseases --record-only --version 1
-```
-
-```bash
-python scripts/audit_dataset.py
-```
-
-Without data, every notebook still runs. It prints exactly where to put the files and uses clearly
-labelled synthetic fixtures instead.
-
----
-
-## Run
-
-**Tests**
-
-```bash
-python -m pytest
-```
-
-**Notebooks**, in order 00 → 08. Either open them in Jupyter (`jupyter lab notebooks`) or execute all of
-them headless:
-
-```bash
-python scripts/run_notebooks.py
-```
-
-```bash
-python scripts/check_notebooks.py
-```
-
-**Train and evaluate** (after the audit). Use `--max-per-class 300` for a quicker CPU run:
-
-```bash
-python scripts/train_classifier.py
-```
-
-**Integrated analyzer on one image** (ROI is `x0 y0 x1 y1` in original pixels, max exclusive):
-
-```bash
-python scripts/run_pipeline.py --image "data\raw\kaggle_hair_diseases\Hair Diseases - Final\test\Psoriasis\psoriasis_0026.jpg"
-```
-
-```bash
-python scripts/run_pipeline.py --synthetic-demo
-```
-
-**Evidence report**
-
-```bash
-python scripts/generate_report.py --run-tests
-```
-
-### Model training and prediction workflow
-
-1. `audit_dataset.py` writes the manifest with exclusion reasons and `duplicate_group_id`. It keeps the
-   publisher split only if no duplicate group crosses it, and otherwise re-splits about 70/15/15 by group.
-2. `train_classifier.py` (or notebook 05) extracts the 43 features (cached in `data/derived/`). Inside one
-   `Pipeline` it fits the imputer, scaler and model on **train**, selects the model on **validation**
-   macro-F1, scores **test** once, runs the texture ablation, and saves
-   `models/<source>/baseline_bundle.joblib` plus `.json` metadata (classes, feature schema, config, versions).
-3. `classification.predict_condition(rgb_roi, bundle, cfg)`, `run_pipeline.py` and notebook 08 load the
-   bundle. Nothing is retrained during the demo.
-
-### Expected outputs
-
-* `data/manifests/<source>_manifest.csv`, `_splits.csv`, `_audit_report.json`, `capability_audit.csv`
-* `outputs/figures/<notebook>/{real,synthetic}/*.png` (synthetic files carry a `SYNTHETIC_` prefix and caption)
-* `outputs/results/...`: verification CSVs (counts, widths, stereo), classification metrics JSON, predictions
-* `outputs/demo/{real,synthetic}/<image>.json|.csv|_result_panel.png`
-* `reports/capability_status.md`
-
----
-
-## What was verified, and what still needs you
-
-**Verified here:** the 151 unit and integration tests; execution of all nine notebooks; every CLI script,
-including the clean exit code 2 when data is missing; and the real-data branches of every notebook and
-script, run on a toy export of generated images.
-
-**Still requires manual action:**
-
-1. Download the Kaggle export (your account), then run `audit_dataset.py`, re-run the notebooks
-   (`run_notebooks.py`) and `generate_report.py`. Only then do real class counts, duplicate statistics,
-   classifier metrics and Haar positives exist.
-2. Re-check the hair-mask parameters on real development images. They were selected on synthetic
-   3–4 px shafts (docs/limitations.md §3).
-3. Optionally, install TensorFlow from `requirements-training.txt` for the MobileNetV2 comparison.
-4. Ask faculty whether synthetic-only stereo (Lab 8) and a data-limited Haar positive case (Lab 9) are
-   acceptable.
-
-Known limitations are in [docs/limitations.md](docs/limitations.md). How the standalone Member C prototype was
-folded into this package is recorded in [docs/member_c_migration.md](docs/member_c_migration.md).
-
----
-
-## Team (spec Section 19)
-
-| Slot | Responsibility | Notebooks |
+| Member | Responsibility | Notebooks |
 |---|---|---|
-| Member A | classical processing and texture | 01, 02, 03 |
-| Member B | data audit and condition classification | 00, 05 |
-| Member C | measurement, stereo, face, integration | 04, 06, 07, 08 |
+| Member A | Classical processing and texture | 01, 02, 03 |
+| Member B | Data audit and condition classification | 00, 05 |
+| Member C | Measurement, stereo, face detection, integration | 04, 06, 07, 08 |
 
-## References
-
-OpenCV documentation (filtering, colour conversions, thresholding, pyramids, calib3d, cascade classifier,
-histograms); scikit-image GLCM; TensorFlow transfer-learning tutorial. These are spec Section 24.2,
-refs 1–9. Dataset: Sundar Annamalai, *Hair Diseases*, Kaggle, CC BY-NC-SA 4.0.
+**Dataset:** Sundar Annamalai, *Hair Diseases*, Kaggle, CC BY-NC-SA 4.0 (non-commercial, attribution
+required). Images are not redistributed in this repository.
+**References:** OpenCV documentation (filtering, colour conversion, thresholding, pyramids, calib3d,
+cascade classifier); scikit-image GLCM; Rublee et al., *ORB: an efficient alternative to SIFT or SURF*
+(ICCV 2011). The specification is the course PDF `fcv_miniProj.pdf`, which is not included in this
+repository.

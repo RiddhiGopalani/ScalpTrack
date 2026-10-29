@@ -1,7 +1,7 @@
 capability,status,reason
-condition classification labels,unavailable,dataset not downloaded
+condition classification labels,available,publisher folder/box labels
 independent patient identity,unavailable,no patient_id supplied by the source; grouping is by duplicate cluster
-hair instance / count labels,unavailable,dataset not downloaded
+hair instance / count labels,unavailable,no per-hair annotations in the export
 segmentation masks,unavailable,none in export
 physical pixel scale (um/px),unavailable,no documented scale; widths stay in pixels
 calibrated stereo pairs,unavailable,no verified pair/calibration; synthetic stereo demo only

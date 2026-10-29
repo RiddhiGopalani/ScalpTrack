@@ -1,7 +1,7 @@
 # Dataset setup
 
 ScalpTrack uses **only the public sources linked in the specification** (Section 4). No dataset is
-committed to this repository, and none was downloaded while building it: every source needs your own
+committed to this repository, because the images are licensed; every source needs your own
 account. The code runs without data and tells you exactly what is missing.
 
 ## What is known without downloading

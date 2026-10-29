@@ -1,0 +1,168 @@
+{
+  "bundle_version": "1.0",
+  "model_id": "kaggle_hair_diseases__random_forest__seed42",
+  "model_name": "random_forest",
+  "classes": [
+    "alopecia_areata",
+    "contact_dermatitis",
+    "folliculitis",
+    "head_lice",
+    "lichen_planus",
+    "male_pattern_baldness",
+    "psoriasis",
+    "seborrheic_dermatitis",
+    "telogen_effluvium",
+    "tinea_capitis"
+  ],
+  "label_to_index": {
+    "alopecia_areata": 0,
+    "contact_dermatitis": 1,
+    "folliculitis": 2,
+    "head_lice": 3,
+    "lichen_planus": 4,
+    "male_pattern_baldness": 5,
+    "psoriasis": 6,
+    "seborrheic_dermatitis": 7,
+    "telogen_effluvium": 8,
+    "tinea_capitis": 9
+  },
+  "feature_names": [
+    "gray_mean",
+    "gray_std",
+    "gray_p05",
+    "gray_p50",
+    "gray_p95",
+    "hue_cos_mean",
+    "hue_sin_mean",
+    "hue_resultant",
+    "s_mean",
+    "s_std",
+    "v_mean",
+    "v_std",
+    "lab_L_mean",
+    "lab_L_std",
+    "lab_a_mean",
+    "lab_a_std",
+    "lab_b_mean",
+    "lab_b_std",
+    "canny_edge_fraction",
+    "sobel_mag_mean",
+    "sobel_mag_std",
+    "grad_orient_0_45",
+    "grad_orient_45_90",
+    "grad_orient_90_135",
+    "grad_orient_135_180",
+    "grad_orientation_coherence",
+    "hist_entropy_bits",
+    "glcm_contrast_mean",
+    "glcm_contrast_std",
+    "glcm_asm_mean",
+    "glcm_asm_std",
+    "glcm_energy_mean",
+    "glcm_energy_std",
+    "glcm_entropy_bits_mean",
+    "glcm_entropy_bits_std",
+    "glcm_homogeneity_mean",
+    "glcm_homogeneity_std",
+    "glcm_correlation_mean",
+    "glcm_correlation_std",
+    "laplacian_band_energy_l0",
+    "laplacian_band_energy_l1",
+    "laplacian_band_energy_l2",
+    "laplacian_band_energy_l3"
+  ],
+  "feature_groups": [
+    "intensity",
+    "color",
+    "edge",
+    "texture_hist",
+    "texture_glcm",
+    "multiscale"
+  ],
+  "task_mode": "image_classification",
+  "data_provenance": "real",
+  "trained_on": "kaggle_hair_diseases",
+  "seed": 42,
+  "input_geometry": {
+    "feature_size": 256,
+    "interpolation": "INTER_AREA",
+    "color_order": "RGB"
+  },
+  "config_snapshot": {
+    "texture": {
+      "levels": 32,
+      "distances": [
+        1,
+        2,
+        4
+      ],
+      "angles_deg": [
+        0,
+        45,
+        90,
+        135
+      ],
+      "feature_size": 256
+    },
+    "edges": {
+      "sobel_ksize": 3,
+      "gradient_threshold_fraction": 0.25,
+      "canny_blur_ksize": 5,
+      "canny_blur_sigma": 1.2,
+      "canny_pairs": [
+        [
+          30,
+          90
+        ],
+        [
+          50,
+          150
+        ],
+        [
+          80,
+          200
+        ]
+      ]
+    },
+    "pyramids": {
+      "max_levels": 4,
+      "min_side_px": 16
+    },
+    "classification": {
+      "task_mode": "auto",
+      "split_policy": "publisher_if_clean",
+      "split_fractions": [
+        0.7,
+        0.15,
+        0.15
+      ],
+      "near_duplicate_hamming": 6,
+      "near_duplicate_min_corr": 0.7,
+      "near_duplicate_accept_corr": 0.98,
+      "near_duplicate_orb_inliers": 25,
+      "logreg_C_grid": [
+        0.01,
+        0.1,
+        1.0,
+        10.0
+      ],
+      "rf_n_estimators": 300,
+      "rf_n_jobs": 1,
+      "class_weight": "balanced",
+      "uncertainty_threshold": null,
+      "max_images_per_class": null
+    }
+  },
+  "uncertainty_threshold": null,
+  "versions": {
+    "python": "3.13.7",
+    "numpy": "2.5.4",
+    "opencv": "4.14.0",
+    "scikit-learn": "1.9.1",
+    "scikit-image": "0.26.0",
+    "pandas": "3.1.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD"
+  },
+  "created_unix": 1793050290.868629
+}
